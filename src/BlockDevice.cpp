@@ -24,13 +24,23 @@ ErrorCode BlockDevice::close()
 	return SUCCESS;
 }
 
-ErrorCode BlockDevice::readBlock(uint32_t blockNumber, void* buffer, size_t blockSize)
+void BlockDevice::setBlockSize(uint16_t size)
 {
-	uint64_t offset = static_cast<uint64_t>(blockNumber) * blockSize;
-	ssize_t result = pread(fd, buffer, blockSize, offset);
-	if (result != static_cast<ssize_t>(blockSize))
+	blockSize = size;
+}
+
+ErrorCode BlockDevice::readBytes(uint64_t offset, void* buffer, size_t size)
+{
+	ssize_t result = pread(fd, buffer, size, offset);
+	if (result != static_cast<ssize_t>(size))
 	{
 		return ERROR_READ_FAIL;
 	}
 	return SUCCESS;
+}
+
+ErrorCode BlockDevice::readBlock(uint32_t blockNumber, void* buffer)
+{
+	uint64_t offset = static_cast<uint64_t>(blockNumber) * blockSize;
+	return readBytes(offset, buffer, blockSize);
 }
