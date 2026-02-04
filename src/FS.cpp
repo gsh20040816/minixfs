@@ -32,6 +32,11 @@ ErrorCode FS::mount()
 	}
 
 	g_BlockSize = g_Superblock.s_blocksize;
+	if (g_BlockSize != 1024 && g_BlockSize != 2048 && g_BlockSize != 4096)
+	{
+		bd.close();
+		return ERROR_FS_BROKEN;
+	}
 	bd.setBlockSize(g_BlockSize);
 	g_InodesBitmapStart = MINIX3_IZONE_START_BLOCK;
 	g_ZonesBitmapStart = g_InodesBitmapStart + sb.s_imap_blocks;
@@ -41,7 +46,12 @@ ErrorCode FS::mount()
 	if (g_DataZonesStart != sb.s_firstdatazone)
 	{
 		bd.close();
-		return ERROR_INVALID_SUPERBLOCK;
+		return ERROR_FS_BROKEN;
+	}
+	if (sb.s_log_zone_size > 7)
+	{
+		bd.close();
+		return ERROR_FS_BROKEN;
 	}
 	g_BlocksPerZone = 1 << sb.s_log_zone_size;
 	g_ZoneSize = g_BlockSize * g_BlocksPerZone;
@@ -61,6 +71,10 @@ Bno FS::zone2Block(Zno zoneNumber)
 
 ErrorCode FS::readInode(Ino inodeNumber, void* buffer)
 {
+	if (inodeNumber == 0 || inodeNumber > g_Superblock.s_ninodes)
+	{
+		return ERROR_INVALID_INODE_NUMBER;
+	}
 	inodeNumber--;
 	Bno inodeBlockNumber = g_InodesTableStart + inodeNumber / g_InodesPerBlock;
 	uint32_t inodeOffset = (inodeNumber % g_InodesPerBlock) * MINIX3_INODE_SIZE;
@@ -354,67 +368,81 @@ ErrorCode FS::readInodeFullData(Ino inodeNumber, uint8_t *buffer)
 	return readInodeData(inodeNumber, buffer, inode.i_size, 0);
 }
 
-Ino FS::getInodeFromParentAndName(Ino parentInodeNumber, const std::string &name)
+Ino FS::getInodeFromParentAndName(Ino parentInodeNumber, const std::string &name, ErrorCode &outError)
 {
 	MinixInode3 parentInode;
 	ErrorCode err = readInode(parentInodeNumber, &parentInode);
 	if (err != SUCCESS)
 	{
+		outError = err;
 		return 0;
 	}
 	if (!parentInode.isDirectory())
 	{
+		outError = ERROR_NOT_DIRECTORY;
 		return 0;
 	}
 	uint32_t dirSize = parentInode.i_size;
 	uint8_t *dirData = static_cast<uint8_t*>(malloc(dirSize));
 	if (dirData == nullptr)
 	{
+		outError = ERROR_CANNOT_ALLOCATE_MEMORY;
 		return 0;
 	}
 	err = readInodeFullData(parentInodeNumber, dirData);
 	if (err != SUCCESS)
 	{
+		outError = err;
 		free(dirData);
+		return 0;
+	}
+	if (dirSize % sizeof(DirEntryOnDisk) != 0)
+	{
+		free(dirData);
+		outError = ERROR_FS_BROKEN;
 		return 0;
 	}
 	for (uint32_t offset = 0; offset < dirSize; offset += sizeof(DirEntryOnDisk))
 	{
 		DirEntryOnDisk *entry = reinterpret_cast<DirEntryOnDisk*>(dirData + offset);
-		std::string entryName(entry->d_name);
+		std::string entryName = char60ToString(entry->d_name);
 		if (entryName == name && entry->d_inode != 0)
 		{
 			Ino inodeNumber = entry->d_inode;
 			free(dirData);
+			outError = SUCCESS;
 			return inodeNumber;
 		}
 	}
 	free(dirData);
+	outError = ERROR_FILE_NOT_FOUND;
 	return 0;
 }
 
-Ino FS::getInodeFromPath(const std::string &path)
+Ino FS::getInodeFromPath(const std::string &path, ErrorCode &outError)
 {
 	Ino currentInode = MINIX3_ROOT_INODE;
 	std::vector<std::string> components = splitPath(path);
 	for (const std::string &component: components)
 	{
-		currentInode = getInodeFromParentAndName(currentInode, component);
-		if (currentInode == 0)
+		ErrorCode err;
+		currentInode = getInodeFromParentAndName(currentInode, component, err);
+		if (err != SUCCESS)
 		{
+			outError = err;
 			return 0;
 		}
 	}
+	outError = SUCCESS;
 	return currentInode;
 }
 
 std::vector<DirEntry> FS::listDir(const std::string &path, ErrorCode &outError)
 {
 	std::vector<DirEntry> entries;
-	Ino dirInodeNumber = getInodeFromPath(path);
-	if (dirInodeNumber == 0)
+	Ino dirInodeNumber = getInodeFromPath(path, outError);
+	if (outError != SUCCESS)
 	{
-		outError = ERROR_FILE_NOT_FOUND;
 		return entries;
 	}
 	MinixInode3 dirInode;
@@ -426,6 +454,7 @@ std::vector<DirEntry> FS::listDir(const std::string &path, ErrorCode &outError)
 	}
 	if (!dirInode.isDirectory())
 	{
+		outError = ERROR_NOT_DIRECTORY;
 		return entries;
 	}
 	uint32_t dirSize = dirInode.i_size;
@@ -440,6 +469,12 @@ std::vector<DirEntry> FS::listDir(const std::string &path, ErrorCode &outError)
 	{
 		outError = err;
 		free(dirData);
+		return entries;
+	}
+	if (dirSize % sizeof(DirEntryOnDisk) != 0)
+	{
+		free(dirData);
+		outError = ERROR_FS_BROKEN;
 		return entries;
 	}
 	for (uint32_t offset = 0; offset < dirSize; offset += sizeof(DirEntryOnDisk))
@@ -464,10 +499,9 @@ std::vector<DirEntry> FS::listDir(const std::string &path, ErrorCode &outError)
 
 uint32_t FS::readFile(const std::string &path, uint8_t *buffer, uint32_t offset, uint32_t sizeToRead, ErrorCode &outError)
 {
-	Ino fileInodeNumber = getInodeFromPath(path);
-	if (fileInodeNumber == 0)
+	Ino fileInodeNumber = getInodeFromPath(path, outError);
+	if (outError != SUCCESS)
 	{
-		outError = ERROR_FILE_NOT_FOUND;
 		return 0;
 	}
 	MinixInode3 fileInode;
@@ -487,10 +521,14 @@ uint32_t FS::readFile(const std::string &path, uint8_t *buffer, uint32_t offset,
 		outError = ERROR_READ_FILE_END;
 		return 0;
 	}
-	if (offset + sizeToRead > fileInode.i_size)
+	if (sizeToRead > fileInode.i_size - offset)
 	{
 		sizeToRead = fileInode.i_size - offset;
 	}
 	outError = readInodeData(fileInodeNumber, buffer, sizeToRead, offset);
+	if (outError != SUCCESS)
+	{
+		return 0;
+	}
 	return sizeToRead;
 }

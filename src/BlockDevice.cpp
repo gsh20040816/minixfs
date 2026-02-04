@@ -32,7 +32,18 @@ void BlockDevice::setBlockSize(uint16_t size)
 ErrorCode BlockDevice::readBytes(uint64_t offset, void* buffer, size_t size)
 {
 	ssize_t result = pread(fd, buffer, size, offset);
-	if (result != static_cast<ssize_t>(size))
+	int retries = 0;
+	int nowCount = result > 0 ? static_cast<int>(result) : 0;
+	while ((result < 0 || nowCount < size) && retries < MAX_READ_RETRIES)
+	{
+		result = pread(fd, static_cast<uint8_t*>(buffer) + nowCount, size - nowCount, offset + nowCount);
+		if (result > 0)
+		{
+			nowCount += static_cast<int>(result);
+		}
+		retries++;
+	}
+	if (nowCount != static_cast<int>(size))
 	{
 		return ERROR_READ_FAIL;
 	}

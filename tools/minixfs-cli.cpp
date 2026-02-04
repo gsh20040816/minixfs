@@ -1,5 +1,6 @@
 #include <iostream>
 #include "FS.h"
+#include "Utils.h"
 
 int main(int argc, char **argv)
 {
@@ -46,7 +47,7 @@ int main(int argc, char **argv)
 			{
 				for (const DirEntry &entry : entries)
 				{
-					std::cout << entry.raw.d_name << std::endl;
+					std::cout << char60ToString(entry.raw.d_name) << std::endl;
 				}
 			}
 		}

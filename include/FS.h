@@ -32,8 +32,8 @@ private:
 	ErrorCode readInodeData(Ino inodeNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset = 0);
 	ErrorCode readInodeFullData(Ino inodeNumber, uint8_t *buffer);
 	Bno zone2Block(Zno zoneNumber);
-	Ino getInodeFromParentAndName(Ino parentInodeNumber, const std::string &name);
-	Ino getInodeFromPath(const std::string &path);
+	Ino getInodeFromParentAndName(Ino parentInodeNumber, const std::string &name, ErrorCode &outError);
+	Ino getInodeFromPath(const std::string &path, ErrorCode &outError);
 public:
 	FS(const std::string &devicePath);
 	ErrorCode mount();

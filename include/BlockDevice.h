@@ -10,6 +10,7 @@ private:
 	std::string devicePath;
 	int fd;
 	uint16_t blockSize;
+	const int MAX_READ_RETRIES = 3;
 public:
 	BlockDevice(const std::string &path);
 	void setBlockSize(uint16_t size);
