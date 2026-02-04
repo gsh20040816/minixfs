@@ -1,0 +1,76 @@
+#include <iostream>
+#include "FS.h"
+
+int main(int argc, char **argv)
+{
+	if (argc != 2)
+	{
+		std::cerr << "Usage: " << argv[0] << " <minixfs_device>" << std::endl;
+		return 1;
+	}
+	std::string devicePath = argv[1];
+	FS filesystem(devicePath);
+	ErrorCode err = filesystem.mount();
+	if (err != SUCCESS)
+	{
+		std::cerr << "Failed to mount filesystem. Error code: " << err << std::endl;
+		return 1;
+	}
+	while (true)
+	{
+		std::cout << "minixfs> ";
+		std::string commandLine;
+		if (!std::getline(std::cin, commandLine))
+		{
+			break;
+		}
+		if (commandLine == "exit" || commandLine == "quit")
+		{
+			break;
+		}
+		else if (commandLine.rfind("ls ", 0) == 0)
+		{
+			std::string path = commandLine.substr(3);
+			std::vector<DirEntry> entries = filesystem.listDir(path);
+			if (entries.empty())
+			{
+				std::cout << "No entries or directory not found." << std::endl;
+			}
+			else
+			{
+				for (const DirEntry &entry : entries)
+				{
+					std::cout << entry.raw.d_name << std::endl;
+				}
+			}
+		}
+		else if (commandLine.rfind("cat ", 0) == 0)
+		{
+			std::string path = commandLine.substr(4);
+			const uint32_t bufferSize = 4096;
+			uint8_t buffer[bufferSize];
+			uint32_t offset = 0;
+			while (true)
+			{
+				ErrorCode err = filesystem.readFile(path, buffer, offset, bufferSize);
+				if (err != SUCCESS && err != ERROR_READ_FAIL)
+				{
+					std::cout << "Failed to read file. Error code: " << err << std::endl;
+					break;
+				}
+				if (err == ERROR_READ_FAIL)
+				{
+					std::cout.write(reinterpret_cast<char*>(buffer), bufferSize);
+					break;
+				}
+				std::cout.write(reinterpret_cast<char*>(buffer), bufferSize);
+				offset += bufferSize;
+			}
+			std::cout << std::endl;
+		}
+		else
+		{
+			std::cout << "Unknown command." << std::endl;
+		}
+	}
+}

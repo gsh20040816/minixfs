@@ -7,7 +7,7 @@ BlockDevice::BlockDevice(const std::string &path): devicePath(path), fd(-1){}
 
 ErrorCode BlockDevice::open()
 {
-	fd = ::open(devicePath.c_str(), O_RDWR | O_DIRECT);
+	fd = ::open(devicePath.c_str(), O_RDWR);
 	if (fd < 0)
 	{
 		return ERROR_OPEN_DEVICE_FAIL;

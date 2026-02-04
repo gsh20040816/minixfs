@@ -24,9 +24,6 @@ private:
 	uint32_t g_BlocksPerZone;
 	uint32_t g_IndirectZonesPerBlock;
 
-	FS(const std::string &devicePath);
-	ErrorCode mount();
-	ErrorCode unmount();
 	ErrorCode readInode(Ino inodeNumber, void *buffer);
 	ErrorCode readOneZoneData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset = 0);
 	ErrorCode readSingleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset = 0);
@@ -37,6 +34,9 @@ private:
 	Ino getInodeFromParentAndName(Ino parentInodeNumber, const std::string &name);
 	Ino getInodeFromPath(const std::string &path);
 public:
+	FS(const std::string &devicePath);
+	ErrorCode mount();
+	ErrorCode unmount();
 	std::vector<DirEntry> listDir(const std::string &path);
 	ErrorCode readFile(const std::string &path, uint8_t *buffer, uint32_t offset, uint32_t sizeToRead);
 };

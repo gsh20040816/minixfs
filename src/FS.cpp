@@ -57,6 +57,7 @@ ErrorCode FS::unmount()
 ErrorCode FS::readInode(Ino inodeNumber, void* buffer)
 {
 	Bno inodeBlockNumber = g_InodesTableStart + inodeNumber / g_InodesPerBlock;
+	inodeNumber--;
 	uint32_t inodeOffset = (inodeNumber % g_InodesPerBlock) * MINIX3_INODE_SIZE;
 	void* blockBuffer = malloc(g_BlockSize);
 	if (blockBuffer == nullptr)
@@ -74,7 +75,7 @@ ErrorCode FS::readInode(Ino inodeNumber, void* buffer)
 	return SUCCESS;
 }
 
-ErrorCode FS::readOneZoneData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset = 0)
+ErrorCode FS::readOneZoneData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset)
 {
 	Bno blockNumber = g_DataZonesStart + zoneNumber * g_BlocksPerZone;
 	for (uint32_t i = 0; i < g_BlocksPerZone; i++)
@@ -122,7 +123,7 @@ ErrorCode FS::readOneZoneData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRe
 	return SUCCESS;
 }
 
-ErrorCode FS::readSingleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset = 0)
+ErrorCode FS::readSingleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset)
 {
 	IndirectBlock indirectBlock;
 	ErrorCode err = g_BlockDevice.readBlock(g_DataZonesStart + zoneNumber * g_BlocksPerZone, &indirectBlock);
@@ -159,7 +160,7 @@ ErrorCode FS::readSingleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t s
 	return SUCCESS;
 }
 
-ErrorCode FS::readDoubleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset = 0)
+ErrorCode FS::readDoubleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset)
 {
 	IndirectBlock indirectBlock;
 	ErrorCode err = g_BlockDevice.readBlock(g_DataZonesStart + zoneNumber * g_BlocksPerZone, &indirectBlock);
@@ -196,7 +197,7 @@ ErrorCode FS::readDoubleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t s
 	return SUCCESS;
 }
 
-ErrorCode FS::readTripleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset = 0)
+ErrorCode FS::readTripleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset)
 {
 	IndirectBlock indirectBlock;
 	ErrorCode err = g_BlockDevice.readBlock(g_DataZonesStart + zoneNumber * g_BlocksPerZone, &indirectBlock);
@@ -233,7 +234,7 @@ ErrorCode FS::readTripleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t s
 	return SUCCESS;
 }
 
-ErrorCode FS::readInodeData(Ino inodeNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset = 0)
+ErrorCode FS::readInodeData(Ino inodeNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset)
 {
 	MinixInode3 inode;
 	ErrorCode err = readInode(inodeNumber, &inode);
@@ -242,7 +243,6 @@ ErrorCode FS::readInodeData(Ino inodeNumber, uint8_t *buffer, uint32_t sizeToRea
 		return err;
 	}
 
-	uint32_t sizeToRead = inode.i_size;
 	for (int i = 0; i < MINIX3_DIRECT_ZONES && sizeToRead > 0; i++)
 	{
 		if (offset >= g_ZoneSize)
