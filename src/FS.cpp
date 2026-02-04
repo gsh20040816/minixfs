@@ -13,7 +13,7 @@ ErrorCode FS::mount()
 		return err;
 	}
 
-	err = bd.readBlock(1, &g_Superblock, MINIX3_SUPERBLOCK_OFFSET);
+	err = bd.readBlock(MINIX3_SUPERBLOCK_OFFSET / MINIX3_DEFAULT_BLOCK_SIZE, &g_Superblock, MINIX3_DEFAULT_BLOCK_SIZE);
 	if (err != SUCCESS)
 	{
 		bd.close();
@@ -28,7 +28,7 @@ ErrorCode FS::mount()
 	}
 
 	g_BlockSize = g_Superblock.s_blocksize;
-	g_InodesBitmapStart = (MINIX3_SUPERBLOCK_OFFSET + sizeof(MinixSuperblock3) + g_BlockSize - 1) / g_BlockSize;
+	g_InodesBitmapStart = MINIX3_IZONE_START_BLOCK;
 	g_ZonesBitmapStart = g_InodesBitmapStart + sb.s_imap_blocks;
 	g_InodesTableStart = g_ZonesBitmapStart + sb.s_zmap_blocks;
 	g_InodesPerBlock = g_BlockSize / MINIX3_INODE_SIZE;
