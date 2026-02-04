@@ -31,6 +31,6 @@ private:
 	ErrorCode readDoubleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead);
 	ErrorCode readTripleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead);
 	ErrorCode readInodeFullData(Ino inodeNumber, uint8_t *buffer);
-	Ino getInodeFromParentAndName(Ino parentInode, const std::string &name);
+	Ino getInodeFromParentAndName(Ino parentInodeNumber, const std::string &name);
 	Ino getInodeFromPath(const std::string &path);
 };

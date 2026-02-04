@@ -3,6 +3,7 @@
 #include "Utils.h"
 #include "Inode.h"
 #include "IndirectBlock.h"
+#include "DirEntry.h"
 #include <cstring>
 
 FS::FS(const std::string &devicePath): g_BlockDevice(devicePath), g_Superblock(), g_BlockSize(0) {}
@@ -288,18 +289,52 @@ ErrorCode FS::readInodeFullData(Ino inodeNumber, uint8_t *buffer)
 	return SUCCESS;
 }
 
-Ino getInodeFromParentAndName(Ino parentInode, const std::string &name)
+Ino FS::getInodeFromParentAndName(Ino parentInodeNumber, const std::string &name)
 {
-	
+	MinixInode3 parentInode;
+	ErrorCode err = readInode(parentInodeNumber, &parentInode);
+	if (err != SUCCESS)
+	{
+		return 0;
+	}
+	if (!parentInode.isDirectory())
+	{
+		return 0;
+	}
+	uint32_t dirSize = parentInode.i_size;
+	uint8_t *dirData = static_cast<uint8_t*>(malloc(dirSize));
+	if (dirData == nullptr)
+	{
+		return 0;
+	}
+	err = readInodeFullData(parentInodeNumber, dirData);
+	if (err != SUCCESS)
+	{
+		free(dirData);
+		return 0;
+	}
+	for (uint32_t offset = 0; offset < dirSize; offset += sizeof(DirEntryOnDisk))
+	{
+		DirEntryOnDisk *entry = reinterpret_cast<DirEntryOnDisk*>(dirData + offset);
+		std::string entryName(entry->d_name);
+		if (entryName == name)
+		{
+			Ino inodeNumber = entry->d_inode;
+			free(dirData);
+			return inodeNumber;
+		}
+	}
+	free(dirData);
+	return 0;
 }
 
 Ino FS::getInodeFromPath(const std::string &path)
 {
 	Ino currentInode = MINIX3_ROOT_INODE;
 	std::vector<std::string> components = splitPath(path);
-	for (const std::string &components: components)
+	for (const std::string &component: components)
 	{
-		currentInode = getInodeFromParentAndName(currentInode, components);
+		currentInode = getInodeFromParentAndName(currentInode, component);
 		if (currentInode == 0)
 		{
 			return 0;

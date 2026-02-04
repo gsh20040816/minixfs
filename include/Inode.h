@@ -14,4 +14,11 @@ struct MinixInode3
 	uint32_t i_mtime;
 	uint32_t i_ctime;
 	uint32_t i_zone[MINIX3_ZONES_PER_INODE];
+	bool isFifo() const;
+	bool isCharacterDevice() const;
+	bool isDirectory() const;
+	bool isBlockDevice() const;
+	bool isRegularFile() const;
+	bool isSymbolicLink() const;
+	bool isSocket() const;
 }__attribute__((packed));
