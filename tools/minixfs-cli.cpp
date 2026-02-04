@@ -41,7 +41,7 @@ int main(int argc, char **argv)
 			}
 			if (entries.empty())
 			{
-				std::cout << "No entries or directory not found." << std::endl;
+				std::cout << "No entries." << std::endl;
 			}
 			else
 			{
