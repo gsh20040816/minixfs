@@ -4,8 +4,10 @@
 #include "Superblock.h"
 #include "Type.h"
 #include "Errors.h"
+#include "DirEntry.h"
 #include <string>
 #include <cstdint>
+#include <vector>
 
 class FS
 {
@@ -26,11 +28,15 @@ private:
 	ErrorCode mount();
 	ErrorCode unmount();
 	ErrorCode readInode(Ino inodeNumber, void *buffer);
-	ErrorCode readOneZoneData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead);
-	ErrorCode readSingleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead);
-	ErrorCode readDoubleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead);
-	ErrorCode readTripleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead);
+	ErrorCode readOneZoneData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset = 0);
+	ErrorCode readSingleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset = 0);
+	ErrorCode readDoubleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset = 0);
+	ErrorCode readTripleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset = 0);
+	ErrorCode readInodeData(Ino inodeNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset = 0);
 	ErrorCode readInodeFullData(Ino inodeNumber, uint8_t *buffer);
 	Ino getInodeFromParentAndName(Ino parentInodeNumber, const std::string &name);
 	Ino getInodeFromPath(const std::string &path);
+public:
+	std::vector<DirEntry> listDir(const std::string &path);
+	ErrorCode readFile(const std::string &path, uint8_t *buffer, uint32_t offset, uint32_t sizeToRead);
 };

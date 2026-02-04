@@ -11,7 +11,7 @@ struct DirEntryOnDisk
 
 struct DirEntry
 {
-	DirEntryOnDisk *raw;
+	DirEntryOnDisk raw;
 	uint16_t i_mode;
 	bool isFifo() const;
 	bool isCharacterDevice() const;
