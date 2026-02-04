@@ -16,4 +16,5 @@ struct MinixSuperblock3
 	uint16_t s_padding2;
 	uint16_t s_blocksize;
 	uint8_t  s_disk_version;
+	uint8_t  s_paddings3[993];
 }__attribute__((packed));
