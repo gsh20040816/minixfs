@@ -31,7 +31,13 @@ int main(int argc, char **argv)
 		else if (commandLine.rfind("ls ", 0) == 0)
 		{
 			std::string path = commandLine.substr(3);
-			std::vector<DirEntry> entries = filesystem.listDir(path);
+			ErrorCode err;
+			std::vector<DirEntry> entries = filesystem.listDir(path, err);
+			if (err != SUCCESS)
+			{
+				std::cout << "Failed to list directory. Error code: " << err << std::endl;
+				continue;
+			}
 			if (entries.empty())
 			{
 				std::cout << "No entries or directory not found." << std::endl;

@@ -31,12 +31,13 @@ private:
 	ErrorCode readTripleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset = 0);
 	ErrorCode readInodeData(Ino inodeNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset = 0);
 	ErrorCode readInodeFullData(Ino inodeNumber, uint8_t *buffer);
+	Bno zone2Block(Zno zoneNumber);
 	Ino getInodeFromParentAndName(Ino parentInodeNumber, const std::string &name);
 	Ino getInodeFromPath(const std::string &path);
 public:
 	FS(const std::string &devicePath);
 	ErrorCode mount();
 	ErrorCode unmount();
-	std::vector<DirEntry> listDir(const std::string &path);
+	std::vector<DirEntry> listDir(const std::string &path, ErrorCode &outError);
 	uint32_t readFile(const std::string &path, uint8_t *buffer, uint32_t offset, uint32_t sizeToRead, ErrorCode &outError);
 };

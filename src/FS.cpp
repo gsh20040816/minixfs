@@ -54,6 +54,11 @@ ErrorCode FS::unmount()
 	return g_BlockDevice.close();
 }
 
+Bno FS::zone2Block(Zno zoneNumber)
+{
+	return zoneNumber * g_BlocksPerZone;
+}
+
 ErrorCode FS::readInode(Ino inodeNumber, void* buffer)
 {
 	inodeNumber--;
@@ -77,7 +82,7 @@ ErrorCode FS::readInode(Ino inodeNumber, void* buffer)
 
 ErrorCode FS::readOneZoneData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset)
 {
-	Bno blockNumber = zoneNumber * g_BlocksPerZone;
+	Bno blockNumber = zone2Block(zoneNumber);
 	for (uint32_t i = 0; i < g_BlocksPerZone; i++)
 	{
 		if (offset >= g_BlockSize)
@@ -126,7 +131,7 @@ ErrorCode FS::readOneZoneData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRe
 ErrorCode FS::readSingleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset)
 {
 	IndirectBlock indirectBlock;
-	ErrorCode err = g_BlockDevice.readBlock(g_DataZonesStart + zoneNumber * g_BlocksPerZone, &indirectBlock);
+	ErrorCode err = g_BlockDevice.readBlock(zone2Block(zoneNumber), &indirectBlock);
 	if (err != SUCCESS)
 	{
 		return err;
@@ -163,7 +168,7 @@ ErrorCode FS::readSingleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t s
 ErrorCode FS::readDoubleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset)
 {
 	IndirectBlock indirectBlock;
-	ErrorCode err = g_BlockDevice.readBlock(g_DataZonesStart + zoneNumber * g_BlocksPerZone, &indirectBlock);
+	ErrorCode err = g_BlockDevice.readBlock(zone2Block(zoneNumber), &indirectBlock);
 	if (err != SUCCESS)
 	{
 		return err;
@@ -200,7 +205,7 @@ ErrorCode FS::readDoubleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t s
 ErrorCode FS::readTripleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset)
 {
 	IndirectBlock indirectBlock;
-	ErrorCode err = g_BlockDevice.readBlock(g_DataZonesStart + zoneNumber * g_BlocksPerZone, &indirectBlock);
+	ErrorCode err = g_BlockDevice.readBlock(zone2Block(zoneNumber), &indirectBlock);
 	if (err != SUCCESS)
 	{
 		return err;
@@ -278,7 +283,7 @@ ErrorCode FS::readInodeData(Ino inodeNumber, uint8_t *buffer, uint32_t sizeToRea
 		}
 		Zno zoneNumber = inode.i_zone[i];
 		uint32_t toRead = std::min(static_cast<uint64_t>(g_ZoneSize) * g_IndirectZonesPerBlock - offset, static_cast<uint64_t>(sizeToRead));
-		err = readSingleIndirectData(zoneNumber, buffer, toRead);
+		err = readSingleIndirectData(zoneNumber, buffer, toRead, offset);
 		offset = 0;
 		if (err != SUCCESS)
 		{
@@ -403,18 +408,20 @@ Ino FS::getInodeFromPath(const std::string &path)
 	return currentInode;
 }
 
-std::vector<DirEntry> FS::listDir(const std::string &path)
+std::vector<DirEntry> FS::listDir(const std::string &path, ErrorCode &outError)
 {
 	std::vector<DirEntry> entries;
 	Ino dirInodeNumber = getInodeFromPath(path);
 	if (dirInodeNumber == 0)
 	{
+		outError = ERROR_FILE_NOT_FOUND;
 		return entries;
 	}
 	MinixInode3 dirInode;
 	ErrorCode err = readInode(dirInodeNumber, &dirInode);
 	if (err != SUCCESS)
 	{
+		outError = err;
 		return entries;
 	}
 	if (!dirInode.isDirectory())
@@ -425,11 +432,13 @@ std::vector<DirEntry> FS::listDir(const std::string &path)
 	uint8_t *dirData = static_cast<uint8_t*>(malloc(dirSize));
 	if (dirData == nullptr)
 	{
+		outError = ERROR_CANNOT_ALLOCATE_MEMORY;
 		return entries;
 	}
 	err = readInodeFullData(dirInodeNumber, dirData);
 	if (err != SUCCESS)
 	{
+		outError = err;
 		free(dirData);
 		return entries;
 	}
@@ -449,6 +458,7 @@ std::vector<DirEntry> FS::listDir(const std::string &path)
 		}
 	}
 	free(dirData);
+	outError = SUCCESS;
 	return entries;
 }
 
