@@ -317,7 +317,7 @@ Ino FS::getInodeFromParentAndName(Ino parentInodeNumber, const std::string &name
 	{
 		DirEntryOnDisk *entry = reinterpret_cast<DirEntryOnDisk*>(dirData + offset);
 		std::string entryName(entry->d_name);
-		if (entryName == name)
+		if (entryName == name && entry->d_inode != 0)
 		{
 			Ino inodeNumber = entry->d_inode;
 			free(dirData);
