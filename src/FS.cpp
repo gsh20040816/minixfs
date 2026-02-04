@@ -56,8 +56,8 @@ ErrorCode FS::unmount()
 
 ErrorCode FS::readInode(Ino inodeNumber, void* buffer)
 {
-	Bno inodeBlockNumber = g_InodesTableStart + inodeNumber / g_InodesPerBlock;
 	inodeNumber--;
+	Bno inodeBlockNumber = g_InodesTableStart + inodeNumber / g_InodesPerBlock;
 	uint32_t inodeOffset = (inodeNumber % g_InodesPerBlock) * MINIX3_INODE_SIZE;
 	void* blockBuffer = malloc(g_BlockSize);
 	if (blockBuffer == nullptr)
@@ -77,7 +77,7 @@ ErrorCode FS::readInode(Ino inodeNumber, void* buffer)
 
 ErrorCode FS::readOneZoneData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset)
 {
-	Bno blockNumber = g_DataZonesStart + zoneNumber * g_BlocksPerZone;
+	Bno blockNumber = zoneNumber * g_BlocksPerZone;
 	for (uint32_t i = 0; i < g_BlocksPerZone; i++)
 	{
 		if (offset >= g_BlockSize)
@@ -452,26 +452,35 @@ std::vector<DirEntry> FS::listDir(const std::string &path)
 	return entries;
 }
 
-ErrorCode FS::readFile(const std::string &path, uint8_t *buffer, uint32_t offset, uint32_t sizeToRead)
+uint32_t FS::readFile(const std::string &path, uint8_t *buffer, uint32_t offset, uint32_t sizeToRead, ErrorCode &outError)
 {
 	Ino fileInodeNumber = getInodeFromPath(path);
 	if (fileInodeNumber == 0)
 	{
-		return ERROR_FILE_NOT_FOUND;
+		outError = ERROR_FILE_NOT_FOUND;
+		return 0;
 	}
 	MinixInode3 fileInode;
 	ErrorCode err = readInode(fileInodeNumber, &fileInode);
 	if (err != SUCCESS)
 	{
-		return err;
+		outError = err;
+		return 0;
 	}
 	if (!fileInode.isRegularFile())
 	{
-		return ERROR_NOT_REGULAR_FILE;
+		outError = ERROR_NOT_REGULAR_FILE;
+		return 0;
+	}
+	if (offset >= fileInode.i_size)
+	{
+		outError = ERROR_READ_FILE_END;
+		return 0;
 	}
 	if (offset + sizeToRead > fileInode.i_size)
 	{
-		return ERROR_READ_FAIL;
+		sizeToRead = fileInode.i_size - offset;
 	}
-	return readInodeData(fileInodeNumber, buffer, sizeToRead, offset);
+	outError = readInodeData(fileInodeNumber, buffer, sizeToRead, offset);
+	return sizeToRead;
 }

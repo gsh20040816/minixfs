@@ -38,5 +38,5 @@ public:
 	ErrorCode mount();
 	ErrorCode unmount();
 	std::vector<DirEntry> listDir(const std::string &path);
-	ErrorCode readFile(const std::string &path, uint8_t *buffer, uint32_t offset, uint32_t sizeToRead);
+	uint32_t readFile(const std::string &path, uint8_t *buffer, uint32_t offset, uint32_t sizeToRead, ErrorCode &outError);
 };

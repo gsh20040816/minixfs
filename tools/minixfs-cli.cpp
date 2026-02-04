@@ -52,19 +52,19 @@ int main(int argc, char **argv)
 			uint32_t offset = 0;
 			while (true)
 			{
-				ErrorCode err = filesystem.readFile(path, buffer, offset, bufferSize);
-				if (err != SUCCESS && err != ERROR_READ_FAIL)
+				ErrorCode err;
+				uint32_t bytesRead = filesystem.readFile(path, buffer, offset, bufferSize, err);
+				if (err != SUCCESS && err != ERROR_READ_FILE_END)
 				{
 					std::cout << "Failed to read file. Error code: " << err << std::endl;
 					break;
 				}
-				if (err == ERROR_READ_FAIL)
+				if (err == ERROR_READ_FILE_END || bytesRead == 0)
 				{
-					std::cout.write(reinterpret_cast<char*>(buffer), bufferSize);
 					break;
 				}
-				std::cout.write(reinterpret_cast<char*>(buffer), bufferSize);
-				offset += bufferSize;
+				std::cout.write(reinterpret_cast<char*>(buffer), bytesRead);
+				offset += bytesRead;
 			}
 			std::cout << std::endl;
 		}
