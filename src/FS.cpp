@@ -610,7 +610,7 @@ Attribute FS::getAttributeFromInode(Ino inodeNumber, ErrorCode &outError)
 	}
 	attr.ino = inodeNumber;
 	attr.mode = inode.i_mode;
-	attr.size = inode.isRegularFile() ? inode.i_size : 0;
+	attr.size = inode.isRegularFile() || inode.isDirectory() ? inode.i_size : 0;
 	attr.nlinks = inode.i_nlinks;
 	attr.uid = inode.i_uid;
 	attr.gid = inode.i_gid;

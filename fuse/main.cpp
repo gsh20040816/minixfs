@@ -149,7 +149,7 @@ static struct fuse_operations makeFsOperations()
 
 struct MountOptions
 {
-	char *devicePath;
+	char *devicePath = nullptr;
 	bool showHelp = false;
 };
 

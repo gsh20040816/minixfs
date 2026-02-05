@@ -45,3 +45,18 @@ target_compile_options(minixfs-fuse
     PRIVATE
         ${FUSE3_CFLAGS_OTHER}
 )
+
+include(CTest)
+if(BUILD_TESTING)
+    add_test(
+        NAME minixfs_consistency
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tests/minixfs_consistency.sh
+                $<TARGET_FILE:minixfs-fuse>
+                ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
+                ${CMAKE_CURRENT_BINARY_DIR}/ctest/minixfs_consistency
+    )
+    set_tests_properties(minixfs_consistency PROPERTIES
+        SKIP_RETURN_CODE 77
+        TIMEOUT 180
+    )
+endif()
