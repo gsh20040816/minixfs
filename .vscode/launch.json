@@ -17,7 +17,7 @@
 		"type": "cppdbg",
 		"request": "launch",
 		"program": "${workspaceFolder}/build/minixfs-fuse",
-		"args": ["-f", "--device=test/minixfs.img", "test/mnt"],
+		"args": ["-f", "-o", "auto_unmount", "--device=test/minixfs.img", "test/mnt"],
 		"cwd": "${workspaceFolder}",
 		"MIMode": "gdb",
 		"stopAtEntry": false,
