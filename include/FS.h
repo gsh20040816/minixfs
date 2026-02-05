@@ -4,6 +4,7 @@
 #include "Superblock.h"
 #include "Type.h"
 #include "Errors.h"
+#include "Layout.h"
 #include "DirEntry.h"
 #include "Attribute.h"
 #include <string>
@@ -16,15 +17,7 @@ class FS
 private:
 	BlockDevice g_BlockDevice;
 	MinixSuperblock3 g_Superblock;
-	uint16_t g_BlockSize;
-	uint32_t g_ZoneSize;
-	Bno g_InodesBitmapStart;
-	Bno g_ZonesBitmapStart;
-	Bno g_InodesTableStart;
-	Bno g_DataZonesStart;
-	uint32_t g_InodesPerBlock;
-	uint32_t g_BlocksPerZone;
-	uint32_t g_IndirectZonesPerBlock;
+	Layout g_Layout;
 
 	ErrorCode readOneZoneData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset = 0);
 	ErrorCode readSingleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset = 0);
@@ -32,7 +25,6 @@ private:
 	ErrorCode readTripleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset = 0);
 	ErrorCode readInodeData(Ino inodeNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset = 0);
 	ErrorCode readInodeFullData(Ino inodeNumber, uint8_t *buffer);
-	Bno zone2Block(Zno zoneNumber);
 	Ino getInodeFromParentAndName(Ino parentInodeNumber, const std::string &name, ErrorCode &outError);
 	Attribute getAttributeFromInode(Ino inodeNumber, ErrorCode &outError);
 public:

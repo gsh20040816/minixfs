@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export LC_ALL=C
+export LANG=C
 
 if [[ $# -ne 1 ]]; then
     echo "Usage: $0 <fixture-dir>" >&2

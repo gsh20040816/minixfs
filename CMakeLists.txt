@@ -12,6 +12,7 @@ set(MINIXFS_SOURCES
     src/FS.cpp
     src/Inode.cpp
     src/Utils.cpp
+	src/Layout.cpp
 )
 
 add_library(libminixfs SHARED ${MINIXFS_SOURCES})

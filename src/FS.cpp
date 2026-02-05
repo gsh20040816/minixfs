@@ -6,9 +6,9 @@
 #include "DirEntry.h"
 #include <cstring>
 
-FS::FS(): g_BlockDevice(), g_Superblock(), g_BlockSize(0) {}
+FS::FS(): g_BlockDevice(), g_Superblock() {}
 
-FS::FS(const std::string &devicePath): g_BlockDevice(devicePath), g_Superblock(), g_BlockSize(0) {}
+FS::FS(const std::string &devicePath): g_BlockDevice(devicePath), g_Superblock() {}
 
 void FS::setDevicePath(const std::string &devicePath)
 {
@@ -32,37 +32,14 @@ ErrorCode FS::mount()
 	}
 
 	MinixSuperblock3 &sb = g_Superblock;
-	if (sb.s_magic != MINIX3_MAGIC)
+	Layout &layout = g_Layout;
+	err = layout.fromSuperblock(sb);
+	if (err != SUCCESS)
 	{
 		bd.close();
-		return ERROR_INVALID_SUPERBLOCK;
+		return err;
 	}
-
-	g_BlockSize = g_Superblock.s_blocksize;
-	if (g_BlockSize != 1024 && g_BlockSize != 2048 && g_BlockSize != 4096)
-	{
-		bd.close();
-		return ERROR_FS_BROKEN;
-	}
-	bd.setBlockSize(g_BlockSize);
-	g_InodesBitmapStart = MINIX3_IZONE_START_BLOCK;
-	g_ZonesBitmapStart = g_InodesBitmapStart + sb.s_imap_blocks;
-	g_InodesTableStart = g_ZonesBitmapStart + sb.s_zmap_blocks;
-	g_InodesPerBlock = g_BlockSize / MINIX3_INODE_SIZE;
-	g_DataZonesStart = g_InodesTableStart + ((sb.s_ninodes * MINIX3_INODE_SIZE + g_BlockSize - 1) / g_BlockSize);
-	if (g_DataZonesStart != sb.s_firstdatazone)
-	{
-		bd.close();
-		return ERROR_FS_BROKEN;
-	}
-	if (sb.s_log_zone_size > 7)
-	{
-		bd.close();
-		return ERROR_FS_BROKEN;
-	}
-	g_BlocksPerZone = 1 << sb.s_log_zone_size;
-	g_ZoneSize = g_BlockSize * g_BlocksPerZone;
-	g_IndirectZonesPerBlock = g_BlockSize / sizeof(uint32_t);
+	bd.setBlockSize(layout.blockSize);
 	return SUCCESS;
 }
 
@@ -71,39 +48,37 @@ ErrorCode FS::unmount()
 	return g_BlockDevice.close();
 }
 
-Bno FS::zone2Block(Zno zoneNumber)
-{
-	return zoneNumber * g_BlocksPerZone;
-}
-
 ErrorCode FS::readInode(Ino inodeNumber, void* buffer)
 {
-	if (inodeNumber == 0 || inodeNumber > g_Superblock.s_ninodes)
+	Layout &layout = g_Layout;
+	ErrorCode err;
+	InodeOffset inodeOffset = layout.inodeOffset(inodeNumber, err);
+	if (err != SUCCESS)
 	{
-		return ERROR_INVALID_INODE_NUMBER;
+		return err;
 	}
-	inodeNumber--;
-	Bno inodeBlockNumber = g_InodesTableStart + inodeNumber / g_InodesPerBlock;
-	uint32_t inodeOffset = (inodeNumber % g_InodesPerBlock) * MINIX3_INODE_SIZE;
-	void* blockBuffer = malloc(g_BlockSize);
+	void* blockBuffer = malloc(layout.blockSize);
 	if (blockBuffer == nullptr)
 	{
 		return ERROR_CANNOT_ALLOCATE_MEMORY;
 	}
-	ErrorCode err = g_BlockDevice.readBlock(inodeBlockNumber, blockBuffer);
+	err = g_BlockDevice.readBlock(inodeOffset.blockNumber, blockBuffer);
 	if (err != SUCCESS)
 	{
 		free(blockBuffer);
 		return err;
 	}
-	memcpy(buffer, static_cast<uint8_t*>(blockBuffer) + inodeOffset, MINIX3_INODE_SIZE);
+	memcpy(buffer, static_cast<uint8_t*>(blockBuffer) + inodeOffset.offsetInBlock, MINIX3_INODE_SIZE);
 	free(blockBuffer);
 	return SUCCESS;
 }
 
 ErrorCode FS::readOneZoneData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset)
 {
-	Bno blockNumber = zone2Block(zoneNumber);
+	Layout &layout = g_Layout;
+	Bno blockNumber = layout.zone2Block(zoneNumber);
+	uint32_t g_BlockSize = layout.blockSize;
+	uint32_t g_BlocksPerZone = layout.blocksPerZone;
 	for (uint32_t i = 0; i < g_BlocksPerZone; i++)
 	{
 		if (offset >= g_BlockSize)
@@ -151,8 +126,11 @@ ErrorCode FS::readOneZoneData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRe
 
 ErrorCode FS::readSingleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset)
 {
+	Layout &layout = g_Layout;
+	uint32_t g_ZoneSize = layout.zoneSize;
+	uint32_t g_IndirectZonesPerBlock = layout.indirectZonesPerBlock;
 	IndirectBlock indirectBlock;
-	ErrorCode err = g_BlockDevice.readBlock(zone2Block(zoneNumber), &indirectBlock);
+	ErrorCode err = g_BlockDevice.readBlock(layout.zone2Block(zoneNumber), &indirectBlock);
 	if (err != SUCCESS)
 	{
 		return err;
@@ -188,8 +166,11 @@ ErrorCode FS::readSingleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t s
 
 ErrorCode FS::readDoubleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset)
 {
+	Layout &layout = g_Layout;
+	uint32_t g_ZoneSize = layout.zoneSize;
+	uint32_t g_IndirectZonesPerBlock = layout.indirectZonesPerBlock;
 	IndirectBlock indirectBlock;
-	ErrorCode err = g_BlockDevice.readBlock(zone2Block(zoneNumber), &indirectBlock);
+	ErrorCode err = g_BlockDevice.readBlock(layout.zone2Block(zoneNumber), &indirectBlock);
 	if (err != SUCCESS)
 	{
 		return err;
@@ -225,8 +206,11 @@ ErrorCode FS::readDoubleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t s
 
 ErrorCode FS::readTripleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset)
 {
+	Layout &layout = g_Layout;
+	uint32_t g_ZoneSize = layout.zoneSize;
+	uint32_t g_IndirectZonesPerBlock = layout.indirectZonesPerBlock;
 	IndirectBlock indirectBlock;
-	ErrorCode err = g_BlockDevice.readBlock(zone2Block(zoneNumber), &indirectBlock);
+	ErrorCode err = g_BlockDevice.readBlock(layout.zone2Block(zoneNumber), &indirectBlock);
 	if (err != SUCCESS)
 	{
 		return err;
@@ -262,6 +246,9 @@ ErrorCode FS::readTripleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t s
 
 ErrorCode FS::readInodeData(Ino inodeNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset)
 {
+	Layout &layout = g_Layout;
+	uint32_t g_ZoneSize = layout.zoneSize;
+	uint32_t g_IndirectZonesPerBlock = layout.indirectZonesPerBlock;
 	MinixInode3 inode;
 	ErrorCode err = readInode(inodeNumber, &inode);
 	if (err != SUCCESS)
@@ -446,7 +433,7 @@ Ino FS::getInodeFromPath(const std::string &path, ErrorCode &outError)
 
 uint16_t FS::getBlockSize() const
 {
-	return g_BlockSize;
+	return g_Layout.blockSize;
 }
 
 struct stat FS::attrToStat(const Attribute &attr) const
@@ -617,7 +604,7 @@ Attribute FS::getAttributeFromInode(Ino inodeNumber, ErrorCode &outError)
 	attr.atime = inode.i_atime;
 	attr.mtime = inode.i_mtime;
 	attr.ctime = inode.i_ctime;
-	attr.blocks = (inode.i_size + g_BlockSize - 1) / g_BlockSize;
+	attr.blocks = (inode.i_size + g_Layout.blockSize - 1) / g_Layout.blockSize;
 	attr.rdev = 0;
 	outError = SUCCESS;
 	return attr;
