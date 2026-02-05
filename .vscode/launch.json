@@ -10,6 +10,16 @@
       "cwd": "${workspaceFolder}",
       "MIMode": "gdb",
       "stopAtEntry": false
-    }
+    },
+	{
+		"name": "Debug minixfs-fuse (CMake)",
+		"type": "cppdbg",
+		"request": "launch",
+		"program": "${command:cmake.launchTargetPath}",
+		"args": ["--device=test/minixfs.img", "test/mnt"],
+		"cwd": "${workspaceFolder}",
+		"MIMode": "gdb",
+		"stopAtEntry": false
+	}
   ]
 }

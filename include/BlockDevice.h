@@ -12,7 +12,9 @@ private:
 	uint16_t blockSize;
 	const int MAX_READ_RETRIES = 3;
 public:
+	BlockDevice();
 	BlockDevice(const std::string &path);
+	void setDevicePath(const std::string &path);
 	void setBlockSize(uint16_t size);
 	ErrorCode open();
 	ErrorCode close();

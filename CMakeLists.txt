@@ -23,3 +23,25 @@ set_target_properties(libminixfs PROPERTIES OUTPUT_NAME minixfs)
 
 add_executable(minixfs-cli tools/minixfs-cli.cpp)
 target_link_libraries(minixfs-cli PRIVATE libminixfs)
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(FUSE3 REQUIRED fuse3)
+
+add_executable(minixfs-fuse fuse/main.cpp)
+target_include_directories(minixfs-fuse
+    PRIVATE
+        ${FUSE3_INCLUDE_DIRS}
+)
+target_link_directories(minixfs-fuse
+    PRIVATE
+        ${FUSE3_LIBRARY_DIRS}
+)
+target_link_libraries(minixfs-fuse
+    PRIVATE
+        libminixfs
+        ${FUSE3_LIBRARIES}
+)
+target_compile_options(minixfs-fuse
+    PRIVATE
+        ${FUSE3_CFLAGS_OTHER}
+)

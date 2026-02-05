@@ -3,7 +3,13 @@
 #include <fcntl.h>
 #include "Errors.h"
 
+BlockDevice::BlockDevice(): devicePath(""), fd(-1) {}
 BlockDevice::BlockDevice(const std::string &path): devicePath(path), fd(-1){}
+
+void BlockDevice::setDevicePath(const std::string &path)
+{
+	devicePath = path;
+}
 
 ErrorCode BlockDevice::open()
 {

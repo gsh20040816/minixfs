@@ -2,6 +2,7 @@
 #include <cstdint>
 #include "Type.h"
 #include "Constants.h"
+#include "Attribute.h"
 
 struct DirEntryOnDisk
 {
@@ -12,7 +13,7 @@ struct DirEntryOnDisk
 struct DirEntry
 {
 	DirEntryOnDisk raw;
-	uint16_t i_mode;
+	Attribute attribute;
 	bool isFifo() const;
 	bool isCharacterDevice() const;
 	bool isDirectory() const;
