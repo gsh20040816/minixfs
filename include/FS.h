@@ -25,8 +25,6 @@ private:
 	FileReader g_FileReader;
 	DirReader g_DirReader;
 	PathResolver g_PathResolver;
-
-	Ino getInodeFromParentAndName(Ino parentInodeNumber, const std::string &name, ErrorCode &outError);
 public:
 	FS();
 	FS(const std::string &devicePath);

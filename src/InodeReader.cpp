@@ -40,7 +40,7 @@ ErrorCode InodeReader::readInode(Ino inodeNumber, void* buffer)
 
 struct stat InodeReader::readStat(Ino inodeNumber, ErrorCode &outError)
 {
-	struct stat st;
+	struct stat st{};
 	MinixInode3 inode;
 	ErrorCode err = readInode(inodeNumber, &inode);
 	if (err != SUCCESS)
