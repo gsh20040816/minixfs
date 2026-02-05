@@ -13,6 +13,10 @@ set(MINIXFS_SOURCES
     src/Inode.cpp
     src/Utils.cpp
 	src/Layout.cpp
+	src/InodeReader.cpp
+	src/FileReader.cpp
+	src/DirReader.cpp
+	src/PathResolver.cpp
 )
 
 add_library(libminixfs SHARED ${MINIXFS_SOURCES})

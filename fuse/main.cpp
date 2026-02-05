@@ -31,7 +31,7 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t
 {
 	ErrorCode err;
 	FS &fs = g_FileSystem;
-	Ino dirInodeNumber = fs.getInodeFromPath(path, err);
+	int32_t totalEntries = fs.getDirectorySize(path, err);
 	if (err != SUCCESS)
 	{
 		if (err == ERROR_NOT_DIRECTORY)
@@ -43,21 +43,10 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t
 			return -ENOENT;
 		}
 		else
-		{	
+		{
 			return -EIO;
 		}
 	}
-	MinixInode3 dirInode;
-	err = fs.readInode(dirInodeNumber, &dirInode);
-	if (err != SUCCESS)
-	{
-		return -EIO;
-	}
-	if (!dirInode.isDirectory())
-	{
-		return -ENOTDIR;
-	}
-	int32_t totalEntries = dirInode.i_size / sizeof(DirEntryOnDisk);
 	if (offset >= totalEntries)
 	{
 		return 0;
