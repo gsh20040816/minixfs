@@ -111,7 +111,7 @@ uint32_t FS::readFile(const std::string &path, uint8_t *buffer, uint32_t offset,
 	{
 		sizeToRead = fileInode.i_size - offset;
 	}
-	outError = g_FileReader.readFile(fileInode, buffer, offset, sizeToRead);
+	outError = g_FileReader.readFile(fileInode, buffer, sizeToRead, offset);
 	if (outError != SUCCESS)
 	{
 		return 0;
