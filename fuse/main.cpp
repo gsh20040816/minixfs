@@ -1,6 +1,7 @@
 #define FUSE_USE_VERSION 35
 #include "FS.h"
 #include "Utils.h"
+#include "Inode.h"
 #include <fuse3/fuse.h>
 #include <sys/stat.h>
 #include <cstring>
@@ -30,7 +31,38 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t
 {
 	ErrorCode err;
 	FS &fs = g_FileSystem;
-	do
+	Ino dirInodeNumber = fs.getInodeFromPath(path, err);
+	if (err != SUCCESS)
+	{
+		if (err == ERROR_NOT_DIRECTORY)
+		{
+			return -ENOTDIR;
+		}
+		else if (err == ERROR_FILE_NOT_FOUND)
+		{
+			return -ENOENT;
+		}
+		else
+		{	
+			return -EIO;
+		}
+	}
+	MinixInode3 dirInode;
+	err = fs.readInode(dirInodeNumber, &dirInode);
+	if (err != SUCCESS)
+	{
+		return -EIO;
+	}
+	if (!dirInode.isDirectory())
+	{
+		return -ENOTDIR;
+	}
+	int32_t totalEntries = dirInode.i_size / sizeof(DirEntryOnDisk);
+	if (offset >= totalEntries)
+	{
+		return 0;
+	}
+	while (offset < totalEntries)
 	{
 		std::vector<DirEntry> entries = fs.listDir(path, offset, 1, err);
 		if (err != SUCCESS)
@@ -50,7 +82,8 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t
 		}
 		if (entries.empty())
 		{
-			break;
+			offset += 1;
+			continue;
 		}
 		auto &entry = entries[0];
 		struct stat st = fs.attrToStat(entry.attribute);
@@ -61,7 +94,6 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t
 		}
 		offset += 1;
 	}
-	while (true);
 	return 0;
 }
 
@@ -117,7 +149,7 @@ static struct fuse_operations makeFsOperations()
 
 struct MountOptions
 {
-	std::string devicePath;
+	char *devicePath;
 	bool showHelp = false;
 };
 
@@ -146,7 +178,7 @@ int main(int argc, char **argv)
 		fuse_opt_free_args(&args);
 		return 1;
 	}
-	if (options.showHelp || options.devicePath.empty())
+	if (options.showHelp || options.devicePath == nullptr)
 	{
 		showHelp();
 		fuse_opt_free_args(&args);

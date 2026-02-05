@@ -26,7 +26,6 @@ private:
 	uint32_t g_BlocksPerZone;
 	uint32_t g_IndirectZonesPerBlock;
 
-	ErrorCode readInode(Ino inodeNumber, void *buffer);
 	ErrorCode readOneZoneData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset = 0);
 	ErrorCode readSingleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset = 0);
 	ErrorCode readDoubleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset = 0);
@@ -35,7 +34,6 @@ private:
 	ErrorCode readInodeFullData(Ino inodeNumber, uint8_t *buffer);
 	Bno zone2Block(Zno zoneNumber);
 	Ino getInodeFromParentAndName(Ino parentInodeNumber, const std::string &name, ErrorCode &outError);
-	Ino getInodeFromPath(const std::string &path, ErrorCode &outError);
 	Attribute getAttributeFromInode(Ino inodeNumber, ErrorCode &outError);
 public:
 	FS();
@@ -43,6 +41,8 @@ public:
 	void setDevicePath(const std::string &devicePath);
 	ErrorCode mount();
 	ErrorCode unmount();
+	Ino getInodeFromPath(const std::string &path, ErrorCode &outError);
+	ErrorCode readInode(Ino inodeNumber, void *buffer);
 	uint16_t getBlockSize() const;
 	struct stat attrToStat(const Attribute &attr) const;
 	std::vector<DirEntry> listDir(const std::string &path, uint32_t offset, uint32_t count, ErrorCode &outError);
