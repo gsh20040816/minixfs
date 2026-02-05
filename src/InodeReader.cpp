@@ -57,8 +57,10 @@ struct stat InodeReader::readStat(Ino inodeNumber, ErrorCode &outError)
 	st.st_atime = inode.i_atime;
 	st.st_mtime = inode.i_mtime;
 	st.st_ctime = inode.i_ctime;
-	st.st_blocks = (inode.i_size + layout->blockSize - 1) / layout->blockSize;
+	st.st_blocks = (inode.i_size + POSIX_BLOCK_SIZE - 1) / POSIX_BLOCK_SIZE;
 	st.st_rdev = 0;
+	st.st_dev = 0;
+	st.st_blksize = layout->blockSize;
 	outError = SUCCESS;
 	return st;
 }
