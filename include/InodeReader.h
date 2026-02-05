@@ -4,7 +4,6 @@
 #include "Errors.h"
 #include "Layout.h"
 #include "BlockDevice.h"
-#include "Attribute.h"
 
 struct InodeReader
 {
@@ -13,5 +12,5 @@ struct InodeReader
 	void setLayout(Layout &layout);
 	void setBlockDevice(BlockDevice &blockDevice);
 	ErrorCode readInode(Ino inodeNumber, void* buffer);
-	Attribute readAttribute(Ino inodeNumber, ErrorCode &outError);
+	struct stat readStat(Ino inodeNumber, ErrorCode &outError);
 };

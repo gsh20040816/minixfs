@@ -84,7 +84,7 @@ std::vector<DirEntry> DirReader::readDir(Ino dirInodeNumber, uint32_t offset, ui
 			MinixInode3 entryInode;
 			err = inodeReader->readInode(entryOnDisk->d_inode, &entryInode);
 			if (err != SUCCESS) continue;
-			entry.attribute = inodeReader->readAttribute(entryOnDisk->d_inode, err);
+			entry.st = inodeReader->readStat(entryOnDisk->d_inode, err);
 			if (err != SUCCESS) continue;
 			entries.push_back(entry);
 		}

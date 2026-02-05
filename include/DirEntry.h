@@ -1,8 +1,8 @@
 #pragma once
 #include <cstdint>
+#include <sys/stat.h>
 #include "Type.h"
 #include "Constants.h"
-#include "Attribute.h"
 
 struct DirEntryOnDisk
 {
@@ -13,7 +13,7 @@ struct DirEntryOnDisk
 struct DirEntry
 {
 	DirEntryOnDisk raw;
-	Attribute attribute;
+	struct stat st;
 	bool isFifo() const;
 	bool isCharacterDevice() const;
 	bool isDirectory() const;

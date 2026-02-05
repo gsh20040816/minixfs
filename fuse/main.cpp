@@ -18,12 +18,18 @@ static int fs_getattr(const char *path, struct stat *st, fuse_file_info *fi)
 {
 	std::memset(st, 0, sizeof(struct stat));
 	ErrorCode err;
-	Attribute attr = g_FileSystem.getFileAttribute(path, err);
+	*st = g_FileSystem.getFileStat(path, err);
 	if (err != SUCCESS)
 	{
-		return -ENOENT;
+		if (err == ERROR_FILE_NOT_FOUND)
+		{
+			return -ENOENT;
+		}
+		else
+		{
+			return -EIO;
+		}
 	}
-	*st = g_FileSystem.attrToStat(attr);
 	return 0;
 }
 
@@ -75,7 +81,7 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t
 			continue;
 		}
 		auto &entry = entries[0];
-		struct stat st = fs.attrToStat(entry.attribute);
+		struct stat st = entry.st;
 		std::string name = char60ToString(entry.raw.d_name);
 		if (filler(buf, name.c_str(), &st, offset + 1, static_cast<fuse_fill_dir_flags>(0)) != 0)
 		{
@@ -93,7 +99,7 @@ static int fs_open(const char *path, fuse_file_info *fi)
 		return -EACCES;
 	}
 	ErrorCode err;
-	Attribute attr = g_FileSystem.getFileAttribute(path, err);
+	struct stat st = g_FileSystem.getFileStat(path, err);
 	if (err != SUCCESS)
 	{
 		if (err == ERROR_FILE_NOT_FOUND)
@@ -105,11 +111,11 @@ static int fs_open(const char *path, fuse_file_info *fi)
 			return -EIO;
 		}
 	}
-	if (!S_ISREG(attr.mode))
+	if (!S_ISREG(st.st_mode))
 	{
 		return -EISDIR;
 	}
-	fi->fh = attr.ino;
+	fi->fh = st.st_ino;
 	return 0;
 }
 

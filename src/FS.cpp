@@ -66,23 +66,6 @@ uint16_t FS::getBlockSize() const
 	return g_Layout.blockSize;
 }
 
-struct stat FS::attrToStat(const Attribute &attr) const
-{
-	struct stat st;
-	st.st_ino = attr.ino;
-	st.st_mode = attr.mode;
-	st.st_nlink = attr.nlinks;
-	st.st_uid = attr.uid;
-	st.st_gid = attr.gid;
-	st.st_size = attr.size;
-	st.st_atime = attr.atime;
-	st.st_mtime = attr.mtime;
-	st.st_ctime = attr.ctime;
-	st.st_blocks = attr.blocks;
-	st.st_rdev = attr.rdev;
-	return st;
-}
-
 uint32_t FS::readFile(const std::string &path, uint8_t *buffer, uint32_t offset, uint32_t sizeToRead, ErrorCode &outError)
 {
 	Ino fileInodeNumber = g_PathResolver.resolvePath(path, outError);
@@ -119,15 +102,14 @@ uint32_t FS::readFile(const std::string &path, uint8_t *buffer, uint32_t offset,
 	return sizeToRead;
 }
 
-Attribute FS::getFileAttribute(const std::string &path, ErrorCode &outError)
+struct stat FS::getFileStat(const std::string &path, ErrorCode &outError)
 {
-	Attribute attr = {};
 	Ino inodeNumber = g_PathResolver.resolvePath(path, outError);
 	if (outError != SUCCESS)
 	{
-		return attr;
+		return {};
 	}
-	return g_InodeReader.readAttribute(inodeNumber, outError);
+	return g_InodeReader.readStat(inodeNumber, outError);
 }
 
 uint32_t FS::getDirectorySize(const std::string &path, ErrorCode &outError)

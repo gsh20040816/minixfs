@@ -2,6 +2,7 @@
 #include "Constants.h"
 #include "Inode.h"
 #include <cstring>
+#include <sys/stat.h>
 
 void InodeReader::setLayout(Layout &layout)
 {
@@ -37,27 +38,27 @@ ErrorCode InodeReader::readInode(Ino inodeNumber, void* buffer)
 	return SUCCESS;
 }
 
-Attribute InodeReader::readAttribute(Ino inodeNumber, ErrorCode &outError)
+struct stat InodeReader::readStat(Ino inodeNumber, ErrorCode &outError)
 {
-	Attribute attr = {};
+	struct stat st;
 	MinixInode3 inode;
 	ErrorCode err = readInode(inodeNumber, &inode);
 	if (err != SUCCESS)
 	{
 		outError = err;
-		return attr;
+		return {};
 	}
-	attr.ino = inodeNumber;
-	attr.mode = inode.i_mode;
-	attr.size = inode.isRegularFile() || inode.isDirectory() ? inode.i_size : 0;
-	attr.nlinks = inode.i_nlinks;
-	attr.uid = inode.i_uid;
-	attr.gid = inode.i_gid;
-	attr.atime = inode.i_atime;
-	attr.mtime = inode.i_mtime;
-	attr.ctime = inode.i_ctime;
-	attr.blocks = (inode.i_size + layout->blockSize - 1) / layout->blockSize;
-	attr.rdev = 0;
+	st.st_ino = inodeNumber;
+	st.st_mode = inode.i_mode;
+	st.st_size = inode.isRegularFile() || inode.isDirectory() ? inode.i_size : 0;
+	st.st_nlink = inode.i_nlinks;
+	st.st_uid = inode.i_uid;
+	st.st_gid = inode.i_gid;
+	st.st_atime = inode.i_atime;
+	st.st_mtime = inode.i_mtime;
+	st.st_ctime = inode.i_ctime;
+	st.st_blocks = (inode.i_size + layout->blockSize - 1) / layout->blockSize;
+	st.st_rdev = 0;
 	outError = SUCCESS;
-	return attr;
+	return st;
 }
