@@ -68,9 +68,34 @@ import sys
 payload = bytes((i * 37) % 256 for i in range(4096))
 sys.stdout.buffer.write(payload)
 PY
+python3 - <<'PY' > "${SEED_DIR}/large.bin"
+import sys
+
+# >2 MiB, can cover direct/single-indirect/double-indirect zone mapping.
+size = 2 * 1024 * 1024 + 123
+chunk_size = 4096
+written = 0
+while written < size:
+    n = min(chunk_size, size - written)
+    chunk = bytes(((written + i) * 17) % 256 for i in range(n))
+    sys.stdout.buffer.write(chunk)
+    written += n
+PY
 
 "${SUDO[@]}" mount -t minix -o loop "${IMG}" "${KERNEL_MNT}"
-"${SUDO[@]}" cp -a "${SEED_DIR}/." "${KERNEL_MNT}/"
+"${SUDO[@]}" cp -a --sparse=always "${SEED_DIR}/." "${KERNEL_MNT}/"
+# Create sparse file directly inside Minix image to ensure holes are present.
+"${SUDO[@]}" python3 - "${KERNEL_MNT}/sparse.bin" <<'PY'
+import sys
+
+path = sys.argv[1]
+with open(path, "wb") as f:
+    f.write(b"SPARSE-START\n")
+    f.seek(2 * 1024 * 1024 + 37)
+    f.write(bytes((i * 29) % 256 for i in range(4096)))
+    f.seek(5 * 1024 * 1024 - 16)
+    f.write(b"SPARSE-END-TRAIL")
+PY
 sync
 
 make_manifest() {
