@@ -138,6 +138,23 @@ uint32_t FS::readFile(const std::string &path, uint8_t *buffer, uint32_t offset,
 	return sizeToRead;
 }
 
+uint32_t FS::writeFile(const std::string &path, const uint8_t *data, uint32_t offset, uint32_t sizeToWrite, ErrorCode &outError)
+{
+	Ino inodeNumber = g_PathResolver.resolvePath(path, outError);
+	if (outError != SUCCESS)
+	{
+		return 0;
+	}
+	ErrorCode err = g_FileWriter.writeFile(inodeNumber, data, offset, sizeToWrite);
+	if (err != SUCCESS)
+	{
+		outError = err;
+		return 0;
+	}
+	outError = SUCCESS;
+	return sizeToWrite;
+}
+
 struct stat FS::getFileStat(const std::string &path, ErrorCode &outError)
 {
 	Ino inodeNumber = g_PathResolver.resolvePath(path, outError);
