@@ -45,6 +45,9 @@ ErrorCode FS::mount()
 	g_InodeReader.setBlockDevice(bd);
 	g_InodeReader.setLayout(layout);
 
+	g_InodeWriter.setBlockDevice(bd);
+	g_InodeWriter.setLayout(layout);
+
 	g_FileMapper.setBlockDevice(bd);
 	g_FileMapper.setInodeReader(g_InodeReader);
 	g_FileMapper.setZonesPerIndirectBlock(layout.zonesPerIndirectBlock);
@@ -53,6 +56,12 @@ ErrorCode FS::mount()
 	g_FileReader.setBlockDevice(bd);
 	g_FileReader.setLayout(layout);
 	g_FileReader.setFileMapper(g_FileMapper);
+
+	g_FileWriter.setBlockDevice(bd);
+	g_FileWriter.setLayout(layout);
+	g_FileWriter.setFileMapper(g_FileMapper);
+	g_FileWriter.setInodeReader(g_InodeReader);
+	g_FileWriter.setInodeWriter(g_InodeWriter);
 
 	g_DirReader.setInodeReader(g_InodeReader);
 	g_DirReader.setFileReader(g_FileReader);

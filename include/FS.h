@@ -7,7 +7,10 @@
 #include "Layout.h"
 #include "DirEntry.h"
 #include "InodeReader.h"
+#include "InodeWriter.h"
 #include "FileReader.h"
+#include "FileWriter.h"
+#include "FileMapper.h"
 #include "DirReader.h"
 #include "PathResolver.h"
 #include "Allocator.h"
@@ -23,8 +26,10 @@ private:
 	MinixSuperblock3 g_Superblock;
 	Layout g_Layout;
 	InodeReader g_InodeReader;
+	InodeWriter g_InodeWriter;
 	FileMapper g_FileMapper;
 	FileReader g_FileReader;
+	FileWriter g_FileWriter;
 	DirReader g_DirReader;
 	PathResolver g_PathResolver;
 	Allocator g_imapAllocator;
