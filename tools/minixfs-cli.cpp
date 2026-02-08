@@ -61,12 +61,12 @@ int main(int argc, char **argv)
 			{
 				ErrorCode err;
 				uint32_t bytesRead = filesystem.readFile(path, buffer, offset, bufferSize, err);
-				if (err != SUCCESS && err != ERROR_READ_FILE_END)
+				if (err != SUCCESS)
 				{
 					std::cout << "Failed to read file. Error code: " << err << std::endl;
 					break;
 				}
-				if (err == ERROR_READ_FILE_END || bytesRead == 0)
+				if (bytesRead == 0)
 				{
 					break;
 				}

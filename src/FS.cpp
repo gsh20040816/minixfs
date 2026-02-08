@@ -87,7 +87,7 @@ uint32_t FS::readFile(const std::string &path, uint8_t *buffer, uint32_t offset,
 	}
 	if (offset >= fileInode.i_size)
 	{
-		outError = ERROR_READ_FILE_END;
+		outError = SUCCESS;
 		return 0;
 	}
 	if (sizeToRead > fileInode.i_size - offset)

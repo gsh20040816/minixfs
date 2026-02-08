@@ -31,3 +31,37 @@ std::string char60ToString(const char str[60])
 	}
 	return std::string(str, length);
 }
+
+int errorCodeToInt(ErrorCode code)
+{
+	switch (code)
+	{
+	case SUCCESS:
+		return 0;
+	case ERROR_OPEN_DEVICE_FAIL:
+		return -EIO;
+	case ERROR_CLOSE_DEVICE_FAIL:
+		return -EIO;
+	case ERROR_READ_FAIL:
+		return -EIO;
+	case ERROR_WRITE_FAIL:
+		return -EIO;
+	case ERROR_INVALID_SUPERBLOCK:
+		return -EIO;
+	case ERROR_CANNOT_ALLOCATE_MEMORY:
+		return -ENOMEM;
+	case ERROR_FS_BROKEN:
+		return -EIO;
+	case ERROR_FILE_NOT_FOUND:
+		return -ENOENT;
+	case ERROR_NOT_REGULAR_FILE:
+		return -EISDIR;
+	case ERROR_NOT_DIRECTORY:
+		return -ENOTDIR;
+	case ERROR_INVALID_INODE_NUMBER:
+		return -EIO;
+	default:
+		return -EIO;
+	}
+	return -EIO;
+}

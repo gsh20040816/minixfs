@@ -21,14 +21,7 @@ static int fs_getattr(const char *path, struct stat *st, fuse_file_info *fi)
 	*st = g_FileSystem.getFileStat(path, err);
 	if (err != SUCCESS)
 	{
-		if (err == ERROR_FILE_NOT_FOUND)
-		{
-			return -ENOENT;
-		}
-		else
-		{
-			return -EIO;
-		}
+		return errorCodeToInt(err);
 	}
 	return 0;
 }
@@ -40,18 +33,7 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t
 	int32_t totalEntries = fs.getDirectorySize(path, err);
 	if (err != SUCCESS)
 	{
-		if (err == ERROR_NOT_DIRECTORY)
-		{
-			return -ENOTDIR;
-		}
-		else if (err == ERROR_FILE_NOT_FOUND)
-		{
-			return -ENOENT;
-		}
-		else
-		{
-			return -EIO;
-		}
+		return errorCodeToInt(err);
 	}
 	if (offset >= totalEntries)
 	{
@@ -62,18 +44,7 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t
 		std::vector<DirEntry> entries = fs.listDir(path, offset, 1, err);
 		if (err != SUCCESS)
 		{
-			if (err == ERROR_NOT_DIRECTORY)
-			{
-				return -ENOTDIR;
-			}
-			else if (err == ERROR_FILE_NOT_FOUND)
-			{
-				return -ENOENT;
-			}
-			else
-			{
-				return -EIO;
-			}
+			return errorCodeToInt(err);
 		}
 		if (entries.empty())
 		{
@@ -102,14 +73,7 @@ static int fs_open(const char *path, fuse_file_info *fi)
 	struct stat st = g_FileSystem.getFileStat(path, err);
 	if (err != SUCCESS)
 	{
-		if (err == ERROR_FILE_NOT_FOUND)
-		{
-			return -ENOENT;
-		}
-		else
-		{
-			return -EIO;
-		}
+		return errorCodeToInt(err);
 	}
 	if (!S_ISREG(st.st_mode))
 	{
@@ -124,9 +88,9 @@ static int fs_read(const char *path, char *buf, size_t size, off_t offset, fuse_
 	FS &fs = g_FileSystem;
 	ErrorCode err;
 	uint32_t bytesRead = fs.readFile(path, reinterpret_cast<uint8_t*>(buf), static_cast<uint32_t>(offset), static_cast<uint32_t>(size), err);
-	if (err != SUCCESS && err != ERROR_READ_FILE_END)
+	if (err != SUCCESS)
 	{
-		return -EIO;
+		return errorCodeToInt(err);
 	}
 	return static_cast<int>(bytesRead);
 }
