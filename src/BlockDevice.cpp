@@ -61,3 +61,30 @@ ErrorCode BlockDevice::readBlock(uint32_t blockNumber, void* buffer)
 	uint64_t offset = static_cast<uint64_t>(blockNumber) * blockSize;
 	return readBytes(offset, buffer, blockSize);
 }
+
+ErrorCode BlockDevice::writeBytes(uint64_t offset, const void* buffer, size_t size)
+{
+	ssize_t result = pwrite(fd, buffer, size, offset);
+	int retries = 0;
+	int nowCount = result > 0 ? static_cast<int>(result) : 0;
+	while ((result < 0 || nowCount < size) && retries < MAX_READ_RETRIES)
+	{
+		result = pwrite(fd, static_cast<const uint8_t*>(buffer) + nowCount, size - nowCount, offset + nowCount);
+		if (result > 0)
+		{
+			nowCount += static_cast<int>(result);
+		}
+		retries++;
+	}
+	if (nowCount != static_cast<int>(size))
+	{
+		return ERROR_WRITE_FAIL;
+	}
+	return SUCCESS;
+}
+
+ErrorCode BlockDevice::writeBlock(uint32_t blockNumber, const void* buffer)
+{
+	uint64_t offset = static_cast<uint64_t>(blockNumber) * blockSize;
+	return writeBytes(offset, buffer, blockSize);
+}

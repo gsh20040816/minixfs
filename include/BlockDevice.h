@@ -20,4 +20,6 @@ public:
 	ErrorCode close();
 	ErrorCode readBytes(uint64_t offset, void* buffer, size_t size);
 	ErrorCode readBlock(uint32_t blockNumber, void* buffer);
+	ErrorCode writeBytes(uint64_t offset, const void* buffer, size_t size);
+	ErrorCode writeBlock(uint32_t blockNumber, const void* buffer);
 };
