@@ -6,17 +6,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(MINIXFS_SOURCES
-    src/BlockDevice.cpp
-    src/DirEntry.cpp
-    src/FS.cpp
-    src/Inode.cpp
-    src/Utils.cpp
-	src/Layout.cpp
-	src/InodeReader.cpp
-	src/FileReader.cpp
-	src/DirReader.cpp
-	src/PathResolver.cpp
+file(GLOB MINIXFS_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
 )
 
 add_library(libminixfs SHARED ${MINIXFS_SOURCES})
