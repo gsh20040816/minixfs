@@ -10,6 +10,7 @@
 #include "FileReader.h"
 #include "DirReader.h"
 #include "PathResolver.h"
+#include "Allocator.h"
 #include <string>
 #include <cstdint>
 #include <vector>
@@ -25,6 +26,8 @@ private:
 	FileReader g_FileReader;
 	DirReader g_DirReader;
 	PathResolver g_PathResolver;
+	Allocator g_imapAllocator;
+	Allocator g_zmapAllocator;
 public:
 	FS();
 	FS(const std::string &devicePath);

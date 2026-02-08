@@ -53,6 +53,22 @@ ErrorCode FS::mount()
 	g_PathResolver.setInodeReader(g_InodeReader);
 	g_PathResolver.setDirReader(g_DirReader);
 
+	g_imapAllocator.setBlockDevice(bd);
+	err = g_imapAllocator.init(layout.imapStart, layout.totalInodes, layout.blockSize);
+	if (err != SUCCESS)
+	{
+		bd.close();
+		return err;
+	}
+
+	g_zmapAllocator.setBlockDevice(bd);
+	err = g_zmapAllocator.init(layout.zmapStart, layout.totalZones, layout.blockSize);
+	if (err != SUCCESS)
+	{
+		bd.close();
+		return err;
+	}
+
 	return SUCCESS;
 }
 

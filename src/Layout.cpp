@@ -27,6 +27,16 @@ ErrorCode Layout::fromSuperblock(const MinixSuperblock3 &sb)
 	dataStart = sb.s_firstdatazone * blocksPerZone;
 	inodesPerBlock = blockSize / MINIX3_INODE_SIZE;
 	totalInodes = sb.s_ninodes;
+	totalZones = sb.s_zones;
+
+	if (sb.s_imap_blocks * blockSize * 8 < totalInodes)
+	{
+		return ERROR_FS_BROKEN;
+	}
+	if (sb.s_zmap_blocks * blockSize * 8 < totalZones)
+	{
+		return ERROR_FS_BROKEN;
+	}
 
 	return SUCCESS;
 }
