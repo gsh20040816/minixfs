@@ -54,7 +54,7 @@ ErrorCode FS::mount()
 	g_PathResolver.setDirReader(g_DirReader);
 
 	g_imapAllocator.setBlockDevice(bd);
-	err = g_imapAllocator.init(layout.imapStart, layout.totalInodes, layout.blockSize);
+	err = g_imapAllocator.init(layout.imapStart, layout.totalInodes, 1, layout.blockSize);
 	if (err != SUCCESS)
 	{
 		bd.close();
@@ -62,7 +62,7 @@ ErrorCode FS::mount()
 	}
 
 	g_zmapAllocator.setBlockDevice(bd);
-	err = g_zmapAllocator.init(layout.zmapStart, layout.totalZones, layout.blockSize);
+	err = g_zmapAllocator.init(layout.zmapStart, layout.totalZones, layout.firstDataZone, layout.blockSize);
 	if (err != SUCCESS)
 	{
 		bd.close();
@@ -74,7 +74,10 @@ ErrorCode FS::mount()
 
 ErrorCode FS::unmount()
 {
-	return g_BlockDevice.close();
+	ErrorCode err = SUCCESS;
+	ErrorCode imapErr = g_imapAllocator.sync();
+	ErrorCode zmapErr = g_zmapAllocator.sync();
+	return (err != SUCCESS) ? err : ((imapErr != SUCCESS) ? imapErr : ((zmapErr != SUCCESS) ? zmapErr : g_BlockDevice.close()));
 }
 
 uint16_t FS::getBlockSize() const

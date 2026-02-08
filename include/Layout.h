@@ -24,6 +24,7 @@ struct Layout
 	uint32_t indirectZonesPerBlock;
 	uint32_t totalInodes;
 	uint32_t totalZones;
+	Zno firstDataZone;
 
 	ErrorCode fromSuperblock(const MinixSuperblock3 &sb);
 	Bno zone2Block(Zno zoneNumber);

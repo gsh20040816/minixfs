@@ -25,10 +25,11 @@ void Allocator::setBlockDevice(BlockDevice &bd)
 	this->blockDevice = &bd;
 }
 
-ErrorCode Allocator::init(uint32_t bmapStartBlock, uint32_t totalBmaps, uint32_t blockSize)
+ErrorCode Allocator::init(uint32_t bmapStartBlock, uint32_t totalBmaps, uint32_t firstFreeBmap, uint32_t blockSize)
 {
 	this->bmapStartBlock = bmapStartBlock;
 	this->totalBmaps = totalBmaps;
+	this->firstFreeBmap = firstFreeBmap;
 	this->blockSize = blockSize;
 	this->bitsPerBlock = blockSize * sizeof(uint8_t) * 8;
 	this->totalBlocks = (totalBmaps + this->bitsPerBlock - 1) / this->bitsPerBlock;
@@ -73,6 +74,10 @@ ErrorCode Allocator::sync()
 
 bool Allocator::setBit(uint32_t idx, bool value)
 {
+	if (idx >= totalBmaps || idx < firstFreeBmap)
+	{
+		return false;
+	}
 	uint32_t block = idx / bitsPerBlock;
 	uint32_t bitInBlock = idx % bitsPerBlock;
 	uint32_t byteInBlock = bitInBlock / 8;
@@ -97,9 +102,9 @@ bool Allocator::setBit(uint32_t idx, bool value)
 
 uint32_t Allocator::allocateBmap(ErrorCode &outError)
 {
-	for(uint32_t i = 0; i < totalBlocks * bitsPerBlock; i++)
+	for(uint32_t i = firstFreeBmap; i < totalBmaps; i++)
 	{
-		if (!setBit(i, true))
+		if (setBit(i, true))
 		{
 			outError = SUCCESS;
 			return i;
@@ -111,9 +116,13 @@ uint32_t Allocator::allocateBmap(ErrorCode &outError)
 
 ErrorCode Allocator::freeBmap(uint32_t idx)
 {
+	if (idx >= totalBmaps || idx < firstFreeBmap)
+	{
+		return ERROR_INVALID_BMAP_INDEX;
+	}
 	if (!setBit(idx, false))
 	{
-		return ERROR_FREEING_UNALLOCATED_BLOCK;
+		return ERROR_FREEING_UNALLOCATED_BMAP;
 	}
 	return SUCCESS;
 }
