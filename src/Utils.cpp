@@ -1,4 +1,5 @@
 #include "Utils.h"
+#include <cerrno>
 
 std::vector<std::string> splitPath(const std::string &path)
 {
