@@ -82,6 +82,48 @@ bool Allocator::setBit(uint32_t idx, bool value)
 	uint32_t bitInBlock = idx % bitsPerBlock;
 	uint32_t byteInBlock = bitInBlock / 8;
 	uint8_t bitMask = 1 << (bitInBlock % 8);
+	if (isInTransaction)
+	{
+		auto it = transactionDirtyBlocks.find(block * blockSize + byteInBlock);
+		if (it == transactionDirtyBlocks.end())
+		{
+			uint32_t byteIdx = block * blockSize + byteInBlock;
+			uint8_t byte = bmapCache[byteIdx];
+			bool oldValue = (byte & bitMask) != 0;
+			if (value == oldValue)
+			{
+				return false;
+			}
+			if (value)
+			{
+				byte |= bitMask;
+			}
+			else
+			{
+				byte &= ~bitMask;
+			}
+			transactionDirtyBlocks[byteIdx] = byte;
+			return true;
+		}
+		else
+		{
+			uint8_t &byte = transactionDirtyBlocks[block * blockSize + byteInBlock];
+			bool oldValue = (byte & bitMask) != 0;
+			if (value == oldValue)
+			{
+				return false;
+			}
+			if (value)
+			{
+				byte |= bitMask;
+			}
+			else
+			{
+				byte &= ~bitMask;
+			}
+			return true;
+		}
+	}
 	uint8_t &byte = bmapCache[block * blockSize + byteInBlock];
 	bool oldValue = (byte & bitMask) != 0;
 	if (value == oldValue)
@@ -125,4 +167,41 @@ ErrorCode Allocator::freeBmap(uint32_t idx)
 		return ERROR_FREEING_UNALLOCATED_BMAP;
 	}
 	return SUCCESS;
+}
+
+ErrorCode Allocator::beginTransaction()
+{
+	if (isInTransaction)
+	{
+		return ERROR_IS_IN_TRANSACTION;
+	}
+	isInTransaction = true;
+	return SUCCESS;
+}
+
+ErrorCode Allocator::revertTransaction()
+{
+	if (!isInTransaction)
+	{
+		return ERROR_FS_BROKEN;
+	}
+	isInTransaction = false;
+	transactionDirtyBlocks.clear();
+	return SUCCESS;
+}
+
+ErrorCode Allocator::commitTransaction()
+{
+	if (!isInTransaction)
+	{
+		return ERROR_FS_BROKEN;
+	}
+	isInTransaction = false;
+	for (const auto& [idx, state] : transactionDirtyBlocks)
+	{
+		bmapCache[idx] = state;
+		isDirtyBlock[idx / blockSize] = 1;
+	}
+	transactionDirtyBlocks.clear();
+	return sync();
 }
