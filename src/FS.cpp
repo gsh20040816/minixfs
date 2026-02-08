@@ -70,7 +70,7 @@ ErrorCode FS::mount()
 	g_PathResolver.setDirReader(g_DirReader);
 
 	g_imapAllocator.setBlockDevice(bd);
-	err = g_imapAllocator.init(layout.imapStart, layout.totalInodes, 1, layout.blockSize);
+	err = g_imapAllocator.init(layout.imapStart, layout.totalInodes + 1, 1, layout.blockSize);
 	if (err != SUCCESS)
 	{
 		bd.close();
@@ -102,15 +102,10 @@ uint16_t FS::getBlockSize() const
 	return g_Layout.blockSize;
 }
 
-uint32_t FS::readFile(const std::string &path, uint8_t *buffer, uint32_t offset, uint32_t sizeToRead, ErrorCode &outError)
+uint32_t FS::readFile(Ino inodeNumber, uint8_t *buffer, uint32_t offset, uint32_t sizeToRead, ErrorCode &outError)
 {
-	Ino fileInodeNumber = g_PathResolver.resolvePath(path, outError);
-	if (outError != SUCCESS)
-	{
-		return 0;
-	}
 	MinixInode3 fileInode;
-	ErrorCode err = g_InodeReader.readInode(fileInodeNumber, &fileInode);
+	ErrorCode err = g_InodeReader.readInode(inodeNumber, &fileInode);
 	if (err != SUCCESS)
 	{
 		outError = err;
@@ -138,13 +133,8 @@ uint32_t FS::readFile(const std::string &path, uint8_t *buffer, uint32_t offset,
 	return sizeToRead;
 }
 
-uint32_t FS::writeFile(const std::string &path, const uint8_t *data, uint32_t offset, uint32_t sizeToWrite, ErrorCode &outError)
+uint32_t FS::writeFile(Ino inodeNumber, const uint8_t *data, uint32_t offset, uint32_t sizeToWrite, ErrorCode &outError)
 {
-	Ino inodeNumber = g_PathResolver.resolvePath(path, outError);
-	if (outError != SUCCESS)
-	{
-		return 0;
-	}
 	ErrorCode err = g_FileWriter.writeFile(inodeNumber, data, offset, sizeToWrite);
 	if (err != SUCCESS)
 	{
@@ -153,6 +143,26 @@ uint32_t FS::writeFile(const std::string &path, const uint8_t *data, uint32_t of
 	}
 	outError = SUCCESS;
 	return sizeToWrite;
+}
+
+uint32_t FS::readFile(const std::string &path, uint8_t *buffer, uint32_t offset, uint32_t sizeToRead, ErrorCode &outError)
+{
+	Ino inodeNumber = g_PathResolver.resolvePath(path, outError);
+	if (outError != SUCCESS)
+	{
+		return 0;
+	}
+	return readFile(inodeNumber, buffer, offset, sizeToRead, outError);
+}
+
+uint32_t FS::writeFile(const std::string &path, const uint8_t *data, uint32_t offset, uint32_t sizeToWrite, ErrorCode &outError)
+{
+	Ino inodeNumber = g_PathResolver.resolvePath(path, outError);
+	if (outError != SUCCESS)
+	{
+		return 0;
+	}
+	return writeFile(inodeNumber, data, offset, sizeToWrite, outError);
 }
 
 struct stat FS::getFileStat(const std::string &path, ErrorCode &outError)

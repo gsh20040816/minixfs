@@ -27,12 +27,16 @@ void Allocator::setBlockDevice(BlockDevice &bd)
 
 ErrorCode Allocator::init(uint32_t bmapStartBlock, uint32_t totalBmaps, uint32_t firstFreeBmap, uint32_t blockSize)
 {
+	if (firstFreeBmap >= totalBmaps)
+	{
+		return ERROR_FS_BROKEN;
+	}
 	this->bmapStartBlock = bmapStartBlock;
 	this->totalBmaps = totalBmaps;
 	this->firstFreeBmap = firstFreeBmap;
 	this->blockSize = blockSize;
 	this->bitsPerBlock = blockSize * sizeof(uint8_t) * 8;
-	this->totalBlocks = (totalBmaps + this->bitsPerBlock - 1) / this->bitsPerBlock;
+	this->totalBlocks = (totalBmaps - firstFreeBmap + 1 + this->bitsPerBlock - 1) / this->bitsPerBlock;
 	this->bmapCache = static_cast<uint8_t*>(malloc(totalBlocks * blockSize));
 	if (bmapCache == nullptr)
 	{
@@ -78,8 +82,9 @@ bool Allocator::setBit(uint32_t idx, bool value)
 	{
 		return false;
 	}
-	uint32_t block = idx / bitsPerBlock;
-	uint32_t bitInBlock = idx % bitsPerBlock;
+	uint32_t bitIdx = idx - firstFreeBmap + 1;
+	uint32_t block = bitIdx / bitsPerBlock;
+	uint32_t bitInBlock = bitIdx % bitsPerBlock;
 	uint32_t byteInBlock = bitInBlock / 8;
 	uint8_t bitMask = 1 << (bitInBlock % 8);
 	if (isInTransaction)

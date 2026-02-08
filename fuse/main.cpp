@@ -65,10 +65,6 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t
 
 static int fs_open(const char *path, fuse_file_info *fi)
 {
-	if ((fi->flags & O_ACCMODE) != O_RDONLY)
-	{
-		return -EACCES;
-	}
 	ErrorCode err;
 	struct stat st = g_FileSystem.getFileStat(path, err);
 	if (err != SUCCESS)
@@ -87,12 +83,24 @@ static int fs_read(const char *path, char *buf, size_t size, off_t offset, fuse_
 {
 	FS &fs = g_FileSystem;
 	ErrorCode err;
-	uint32_t bytesRead = fs.readFile(path, reinterpret_cast<uint8_t*>(buf), static_cast<uint32_t>(offset), static_cast<uint32_t>(size), err);
+	uint32_t bytesRead = fs.readFile(fi->fh, reinterpret_cast<uint8_t*>(buf), static_cast<uint32_t>(offset), static_cast<uint32_t>(size), err);
 	if (err != SUCCESS)
 	{
 		return errorCodeToInt(err);
 	}
 	return static_cast<int>(bytesRead);
+}
+
+static int fs_write(const char *path, const char *buf, size_t size, off_t offset, fuse_file_info *fi)
+{
+	FS &fs = g_FileSystem;
+	ErrorCode err;
+	uint32_t bytesWritten = fs.writeFile(fi->fh, reinterpret_cast<const uint8_t*>(buf), static_cast<uint32_t>(offset), static_cast<uint32_t>(size), err);
+	if (err != SUCCESS)
+	{
+		return errorCodeToInt(err);
+	}
+	return static_cast<int>(bytesWritten);
 }
 
 static struct fuse_operations makeFsOperations()
@@ -103,6 +111,7 @@ static struct fuse_operations makeFsOperations()
 	ops.readdir = fs_readdir;
 	ops.open = fs_open;
 	ops.read = fs_read;
+	ops.write = fs_write;
 	return ops;
 }
 

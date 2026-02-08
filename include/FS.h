@@ -46,5 +46,7 @@ public:
 	std::vector<DirEntry> listDir(const std::string &path, ErrorCode &outError);
 	uint32_t readFile(const std::string &path, uint8_t *buffer, uint32_t offset, uint32_t sizeToRead, ErrorCode &outError);
 	uint32_t writeFile(const std::string &path, const uint8_t *data, uint32_t offset, uint32_t sizeToWrite, ErrorCode &outError);
+	uint32_t readFile(Ino inodeNumber, uint8_t *buffer, uint32_t offset, uint32_t sizeToRead, ErrorCode &outError);
+	uint32_t writeFile(Ino inodeNumber, const uint8_t *data, uint32_t offset, uint32_t sizeToWrite, ErrorCode &outError);
 	struct stat getFileStat(const std::string &path, ErrorCode &outError);
 };

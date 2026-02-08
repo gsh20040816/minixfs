@@ -30,11 +30,11 @@ ErrorCode Layout::fromSuperblock(const MinixSuperblock3 &sb)
 	totalZones = sb.s_zones;
 	firstDataZone = sb.s_firstdatazone;
 
-	if (sb.s_imap_blocks * blockSize * 8 < totalInodes)
+	if (sb.s_imap_blocks * blockSize * 8 < totalInodes + 1)
 	{
 		return ERROR_FS_BROKEN;
 	}
-	if (sb.s_zmap_blocks * blockSize * 8 < totalZones)
+	if (sb.s_zmap_blocks * blockSize * 8 < totalZones - firstDataZone + 1)
 	{
 		return ERROR_FS_BROKEN;
 	}
