@@ -31,12 +31,13 @@ ErrorCode FileReader::readFile(const MinixInode3 &inode, uint8_t *buffer, uint32
 	{
 		return ERROR_INVALID_FILE_OFFSET;
 	}
+	MinixInode3 inodeForMap = inode;
 	Zno startZoneIndex = offset / layout->zoneSize;
 	Zno endZoneIndex = (offset + sizeToRead - 1) / layout->zoneSize;
 	for (Zno zoneIndex = startZoneIndex; zoneIndex <= endZoneIndex; zoneIndex++)
 	{
 		Zno physicalZoneIndex;
-		ErrorCode err = fileMapper->mapLogicalToPhysical(inode, zoneIndex, physicalZoneIndex);
+		ErrorCode err = fileMapper->mapLogicalToPhysical(inodeForMap, zoneIndex, physicalZoneIndex);
 		if (err != SUCCESS)
 		{
 			return err;

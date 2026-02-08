@@ -5,6 +5,7 @@
 #include "InodeReader.h"
 #include "IndirectBlock.h"
 #include "BlockDevice.h"
+#include "Allocator.h"
 
 struct FileMapper
 {
@@ -12,9 +13,11 @@ struct FileMapper
 	uint32_t blocksPerZone;
 	BlockDevice *blockDevice;
 	InodeReader *inodeReader;
+	Allocator *zmapAllocator;
 	void setBlockDevice(BlockDevice &blockDevice);
 	void setInodeReader(InodeReader &inodeReader);
 	void setZonesPerIndirectBlock(uint32_t zonesPerIndirectBlock);
 	void setBlocksPerZone(uint32_t blocksPerZone);
-	ErrorCode mapLogicalToPhysical(const MinixInode3 &inode, Zno logicalZoneIndex, Zno &outPhysicalZoneIndex);
+	void setZmapAllocator(Allocator &zmapAllocator);
+	ErrorCode mapLogicalToPhysical(MinixInode3 &inode, Zno logicalZoneIndex, Zno &outPhysicalZoneIndex, bool allocateIfNotMapped = false);
 };

@@ -75,6 +75,7 @@ ErrorCode FS::mount()
 		bd.close();
 		return err;
 	}
+	g_FileMapper.setZmapAllocator(g_zmapAllocator);
 
 	return SUCCESS;
 }
