@@ -23,6 +23,7 @@ private:
 	MinixSuperblock3 g_Superblock;
 	Layout g_Layout;
 	InodeReader g_InodeReader;
+	FileMapper g_FileMapper;
 	FileReader g_FileReader;
 	DirReader g_DirReader;
 	PathResolver g_PathResolver;

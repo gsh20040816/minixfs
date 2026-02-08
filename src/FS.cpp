@@ -40,12 +40,19 @@ ErrorCode FS::mount()
 		return err;
 	}
 	bd.setBlockSize(layout.blockSize);
+	bd.setZoneSize(layout.zoneSize);
 
 	g_InodeReader.setBlockDevice(bd);
 	g_InodeReader.setLayout(layout);
 
+	g_FileMapper.setBlockDevice(bd);
+	g_FileMapper.setInodeReader(g_InodeReader);
+	g_FileMapper.setZonesPerIndirectBlock(layout.zonesPerIndirectBlock);
+	g_FileMapper.setBlocksPerZone(layout.blocksPerZone);
+
 	g_FileReader.setBlockDevice(bd);
 	g_FileReader.setLayout(layout);
+	g_FileReader.setFileMapper(g_FileMapper);
 
 	g_DirReader.setInodeReader(g_InodeReader);
 	g_DirReader.setFileReader(g_FileReader);

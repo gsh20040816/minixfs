@@ -12,274 +12,88 @@ void FileReader::setLayout(Layout &layout)
 	this->layout = &layout;
 }
 
-ErrorCode FileReader::readFile(const MinixInode3 &inode, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset)
+void FileReader::setFileMapper(FileMapper &fileMapper)
 {
-	Layout &layout = *this->layout;
-	uint32_t g_ZoneSize = layout.zoneSize;
-	uint32_t g_IndirectZonesPerBlock = layout.indirectZonesPerBlock;
-	ErrorCode err = SUCCESS;
-	for (int i = 0; i < MINIX3_DIRECT_ZONES && sizeToRead > 0; i++)
-	{
-		if (offset >= g_ZoneSize)
-		{
-			offset -= g_ZoneSize;
-			continue;
-		}
-		if (inode.i_zone[i] == 0)
-		{
-			return ERROR_FS_BROKEN;
-		}
-		Zno zoneNumber = inode.i_zone[i];
-		uint32_t toRead = std::min(g_ZoneSize - offset, sizeToRead);
-		err = readOneZoneData(zoneNumber, buffer, toRead, offset);
-		offset = 0;
-		if (err != SUCCESS)
-		{
-			return err;
-		}
-		sizeToRead -= toRead;
-		buffer += toRead;
-	}
-	for (int i = MINIX3_SINGLE_INDIRECT_ZONE_INDEX; i < MINIX3_SINGLE_INDIRECT_ZONE_INDEX + MINIX3_SINGLE_INDIRECT_ZONE_INDEX_COUNT && sizeToRead > 0; i++)
-	{
-		if (offset >= static_cast<uint64_t>(g_ZoneSize) * g_IndirectZonesPerBlock)
-		{
-			offset -= static_cast<uint64_t>(g_ZoneSize) * g_IndirectZonesPerBlock;
-			continue;
-		}
-		if (inode.i_zone[i] == 0)
-		{
-			return ERROR_FS_BROKEN;
-		}
-		Zno zoneNumber = inode.i_zone[i];
-		uint32_t toRead = std::min(static_cast<uint64_t>(g_ZoneSize) * g_IndirectZonesPerBlock - offset, static_cast<uint64_t>(sizeToRead));
-		err = readSingleIndirectData(zoneNumber, buffer, toRead, offset);
-		offset = 0;
-		if (err != SUCCESS)
-		{
-			return err;
-		}
-		sizeToRead -= toRead;
-		buffer += toRead;
-	}
-	for (int i = MINIX3_DOUBLE_INDIRECT_ZONE_INDEX; i < MINIX3_DOUBLE_INDIRECT_ZONE_INDEX + MINIX3_DOUBLE_INDIRECT_ZONE_INDEX_COUNT && sizeToRead > 0; i++)
-	{
-		if (offset >= static_cast<uint64_t>(g_ZoneSize) * g_IndirectZonesPerBlock * g_IndirectZonesPerBlock)
-		{
-			offset -= static_cast<uint64_t>(g_ZoneSize) * g_IndirectZonesPerBlock * g_IndirectZonesPerBlock;
-			continue;
-		}
-		if (inode.i_zone[i] == 0)
-		{
-			return ERROR_FS_BROKEN;
-		}
-		Zno zoneNumber = inode.i_zone[i];
-		uint32_t toRead = std::min(static_cast<uint64_t>(g_ZoneSize) * g_IndirectZonesPerBlock * g_IndirectZonesPerBlock - offset, static_cast<uint64_t>(sizeToRead));
-		err = readDoubleIndirectData(zoneNumber, buffer, toRead, offset);
-		offset = 0;
-		if (err != SUCCESS)
-		{
-			return err;
-		}
-		sizeToRead -= toRead;
-		buffer += toRead;
-	}
-	for (int i = MINIX3_TRIPLE_INDIRECT_ZONE_INDEX; i < MINIX3_TRIPLE_INDIRECT_ZONE_INDEX + MINIX3_TRIPLE_INDIRECT_ZONE_INDEX_COUNT && sizeToRead > 0; i++)
-	{
-		if (offset >= static_cast<uint64_t>(g_ZoneSize) * g_IndirectZonesPerBlock * g_IndirectZonesPerBlock * g_IndirectZonesPerBlock)
-		{
-			offset -= static_cast<uint64_t>(g_ZoneSize) * g_IndirectZonesPerBlock * g_IndirectZonesPerBlock * g_IndirectZonesPerBlock;
-			continue;
-		}
-		if (inode.i_zone[i] == 0)
-		{
-			return ERROR_FS_BROKEN;
-		}
-		Zno zoneNumber = inode.i_zone[i];
-		uint32_t toRead = std::min(static_cast<uint64_t>(g_ZoneSize) * g_IndirectZonesPerBlock * g_IndirectZonesPerBlock * g_IndirectZonesPerBlock - offset, static_cast<uint64_t>(sizeToRead));
-		err = readTripleIndirectData(zoneNumber, buffer, toRead, offset);
-		offset = 0;
-		if (err != SUCCESS)
-		{
-			return err;
-		}
-		sizeToRead -= toRead;
-		buffer += toRead;
-	}
-	if (sizeToRead > 0)
-	{
-		return ERROR_READ_FAIL;
-	}
-	return SUCCESS;
+	this->fileMapper = &fileMapper;
 }
 
-ErrorCode FileReader::readOneZoneData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset)
+ErrorCode FileReader::readFile(const MinixInode3 &inode, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset)
 {
-	Layout &layout = *this->layout;
-	Bno blockNumber = layout.zone2Block(zoneNumber);
-	uint32_t g_BlockSize = layout.blockSize;
-	uint32_t g_BlocksPerZone = layout.blocksPerZone;
-	for (uint32_t i = 0; i < g_BlocksPerZone; i++)
+	if (offset >= inode.i_size)
 	{
-		if (offset >= g_BlockSize)
+		return ERROR_INVALID_FILE_OFFSET;
+	}
+	if (sizeToRead == 0)
+	{
+		return SUCCESS;
+	}
+	if (offset + sizeToRead > inode.i_size)
+	{
+		return ERROR_INVALID_FILE_OFFSET;
+	}
+	Zno startZoneIndex = offset / layout->zoneSize;
+	Zno endZoneIndex = (offset + sizeToRead - 1) / layout->zoneSize;
+	for (Zno zoneIndex = startZoneIndex; zoneIndex <= endZoneIndex; zoneIndex++)
+	{
+		Zno physicalZoneIndex;
+		ErrorCode err = fileMapper->mapLogicalToPhysical(inode, zoneIndex, physicalZoneIndex);
+		if (err != SUCCESS)
 		{
-			offset -= g_BlockSize;
-			continue;
+			return err;
 		}
-		if (offset == 0 && sizeToRead >= g_BlockSize)
+		if (physicalZoneIndex == 0)
 		{
-			ErrorCode err = this->blockDevice->readBlock(blockNumber + i, buffer);
-			if (err != SUCCESS)
+			if (inode.isRegularFile())
 			{
-				return err;
+				uint32_t readSize = zoneIndex == startZoneIndex ? std::min(sizeToRead, layout->zoneSize - (offset % layout->zoneSize)) : zoneIndex == endZoneIndex ? (offset + sizeToRead - 1) % layout->zoneSize + 1 : layout->zoneSize;
+				memset(zoneIndex == startZoneIndex ? buffer : buffer + (zoneIndex - startZoneIndex) * layout->zoneSize - (offset % layout->zoneSize), 0, readSize);
+				continue;
 			}
-			buffer += g_BlockSize;
-			sizeToRead -= g_BlockSize;
+			else
+			{
+				return ERROR_FS_BROKEN;
+			}
 		}
-		else
+		if (zoneIndex == startZoneIndex)
 		{
-			uint32_t toRead = std::min(g_BlockSize - offset, sizeToRead);
-			uint8_t *tempBuffer = static_cast<uint8_t*>(malloc(g_BlockSize));
-			if (tempBuffer == nullptr)
+			uint8_t *zoneBuffer = static_cast<uint8_t *>(malloc(layout->zoneSize));
+			if (!zoneBuffer)
 			{
 				return ERROR_CANNOT_ALLOCATE_MEMORY;
 			}
-			ErrorCode err = this->blockDevice->readBlock(blockNumber + i, tempBuffer);
+			err = blockDevice->readZone(physicalZoneIndex, zoneBuffer);
 			if (err != SUCCESS)
 			{
-				free(tempBuffer);
+				free(zoneBuffer);
 				return err;
 			}
-			memcpy(buffer, tempBuffer + offset, toRead);
-			free(tempBuffer);
-			sizeToRead -= toRead;
-			buffer += toRead;
-			offset = 0;
+			memcpy(buffer, zoneBuffer + (offset % layout->zoneSize), std::min(sizeToRead, layout->zoneSize - (offset % layout->zoneSize)));
+			free(zoneBuffer);
 		}
-	}
-	if (sizeToRead > 0)
-	{
-		return ERROR_READ_FAIL;
-	}
-	return SUCCESS;
-}
-
-ErrorCode FileReader::readSingleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset)
-{
-	Layout &layout = *this->layout;
-	uint32_t g_ZoneSize = layout.zoneSize;
-	uint32_t g_IndirectZonesPerBlock = layout.indirectZonesPerBlock;
-	IndirectBlock indirectBlock;
-	ErrorCode err = this->blockDevice->readBlock(layout.zone2Block(zoneNumber), &indirectBlock);
-	if (err != SUCCESS)
-	{
-		return err;
-	}
-	for (uint32_t i = 0; i < g_IndirectZonesPerBlock && sizeToRead > 0; i++)
-	{
-		if (offset >= g_ZoneSize)
+		else if (zoneIndex == endZoneIndex)
 		{
-			offset -= g_ZoneSize;
-			continue;
+			uint8_t *zoneBuffer = static_cast<uint8_t *>(malloc(layout->zoneSize));
+			if (!zoneBuffer)
+			{
+				return ERROR_CANNOT_ALLOCATE_MEMORY;
+			}
+			err = blockDevice->readZone(physicalZoneIndex, zoneBuffer);
+			if (err != SUCCESS)
+			{
+				free(zoneBuffer);
+				return err;
+			}
+			memcpy(buffer + (zoneIndex - startZoneIndex) * layout->zoneSize - (offset % layout->zoneSize), zoneBuffer, (offset + sizeToRead - 1) % layout->zoneSize + 1);
+			free(zoneBuffer);
 		}
-		Zno dataZoneNumber = indirectBlock.zones[i];
-		if (dataZoneNumber == 0)
+		else
 		{
-			return ERROR_FS_BROKEN;
+			err = blockDevice->readZone(physicalZoneIndex, buffer + (zoneIndex - startZoneIndex) * layout->zoneSize - (offset % layout->zoneSize));
+			if (err != SUCCESS)
+			{
+				return err;
+			}
 		}
-		uint32_t toRead = std::min(g_ZoneSize - offset, sizeToRead);
-		err = readOneZoneData(dataZoneNumber, buffer, toRead, offset);
-		offset = 0;
-		if (err != SUCCESS)
-		{
-			return err;
-		}
-		sizeToRead -= toRead;
-		buffer += toRead;
-	}
-	if (sizeToRead > 0)
-	{
-		return ERROR_READ_FAIL;
-	}
-	return SUCCESS;
-}
-
-ErrorCode FileReader::readDoubleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset)
-{
-	Layout &layout = *this->layout;
-	uint32_t g_ZoneSize = layout.zoneSize;
-	uint32_t g_IndirectZonesPerBlock = layout.indirectZonesPerBlock;
-	IndirectBlock indirectBlock;
-	ErrorCode err = this->blockDevice->readBlock(layout.zone2Block(zoneNumber), &indirectBlock);
-	if (err != SUCCESS)
-	{
-		return err;
-	}
-	for (uint32_t i = 0; i < g_IndirectZonesPerBlock && sizeToRead > 0; i++)
-	{
-		if (offset >= static_cast<uint64_t>(g_ZoneSize) * g_IndirectZonesPerBlock)
-		{
-			offset -= static_cast<uint64_t>(g_ZoneSize) * g_IndirectZonesPerBlock;
-			continue;
-		}
-		Zno dataZoneNumber = indirectBlock.zones[i];
-		if (dataZoneNumber == 0)
-		{
-			return ERROR_FS_BROKEN;
-		}
-		uint32_t toRead = std::min(static_cast<uint64_t>(g_ZoneSize) * g_IndirectZonesPerBlock - offset, static_cast<uint64_t>(sizeToRead));
-		err = readSingleIndirectData(dataZoneNumber, buffer, toRead, offset);
-		offset = 0;
-		if (err != SUCCESS)
-		{
-			return err;
-		}
-		sizeToRead -= toRead;
-		buffer += toRead;
-	}
-	if (sizeToRead > 0)
-	{
-		return ERROR_READ_FAIL;
-	}
-	return SUCCESS;
-}
-
-ErrorCode FileReader::readTripleIndirectData(Zno zoneNumber, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset)
-{
-	Layout &layout = *this->layout;
-	uint32_t g_ZoneSize = layout.zoneSize;
-	uint32_t g_IndirectZonesPerBlock = layout.indirectZonesPerBlock;
-	IndirectBlock indirectBlock;
-	ErrorCode err = this->blockDevice->readBlock(layout.zone2Block(zoneNumber), &indirectBlock);
-	if (err != SUCCESS)
-	{
-		return err;
-	}
-	for (uint32_t i = 0; i < g_IndirectZonesPerBlock && sizeToRead > 0; i++)
-	{
-		if (offset >= static_cast<uint64_t>(g_ZoneSize) * g_IndirectZonesPerBlock * g_IndirectZonesPerBlock)
-		{
-			offset -= static_cast<uint64_t>(g_ZoneSize) * g_IndirectZonesPerBlock * g_IndirectZonesPerBlock;
-			continue;
-		}
-		Zno dataZoneNumber = indirectBlock.zones[i];
-		if (dataZoneNumber == 0)
-		{
-			return ERROR_FS_BROKEN;
-		}
-		uint32_t toRead = std::min(static_cast<uint64_t>(g_ZoneSize) * g_IndirectZonesPerBlock * g_IndirectZonesPerBlock - offset, static_cast<uint64_t>(sizeToRead));
-		err = readDoubleIndirectData(dataZoneNumber, buffer, toRead, offset);
-		offset = 0;
-		if (err != SUCCESS)
-		{
-			return err;
-		}
-		sizeToRead -= toRead;
-		buffer += toRead;
-	}
-	if (sizeToRead > 0)
-	{
-		return ERROR_READ_FAIL;
 	}
 	return SUCCESS;
 }

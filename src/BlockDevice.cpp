@@ -35,6 +35,11 @@ void BlockDevice::setBlockSize(uint16_t size)
 	blockSize = size;
 }
 
+void BlockDevice::setZoneSize(uint32_t size)
+{
+	zoneSize = size;
+}
+
 ErrorCode BlockDevice::readBytes(uint64_t offset, void* buffer, size_t size)
 {
 	ssize_t result = pread(fd, buffer, size, offset);
@@ -62,6 +67,12 @@ ErrorCode BlockDevice::readBlock(uint32_t blockNumber, void* buffer)
 	return readBytes(offset, buffer, blockSize);
 }
 
+ErrorCode BlockDevice::readZone(uint32_t zoneNumber, void* buffer)
+{
+	uint64_t offset = static_cast<uint64_t>(zoneNumber) * zoneSize;
+	return readBytes(offset, buffer, zoneSize);
+}
+
 ErrorCode BlockDevice::writeBytes(uint64_t offset, const void* buffer, size_t size)
 {
 	ssize_t result = pwrite(fd, buffer, size, offset);
@@ -87,4 +98,10 @@ ErrorCode BlockDevice::writeBlock(uint32_t blockNumber, const void* buffer)
 {
 	uint64_t offset = static_cast<uint64_t>(blockNumber) * blockSize;
 	return writeBytes(offset, buffer, blockSize);
+}
+
+ErrorCode BlockDevice::writeZone(uint32_t zoneNumber, const void* buffer)
+{
+	uint64_t offset = static_cast<uint64_t>(zoneNumber) * zoneSize;
+	return writeBytes(offset, buffer, zoneSize);
 }

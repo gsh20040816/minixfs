@@ -21,7 +21,7 @@ struct Layout
 	Bno dataStart;
 	uint32_t inodesPerBlock;
 	uint32_t blocksPerZone;
-	uint32_t indirectZonesPerBlock;
+	uint32_t zonesPerIndirectBlock;
 	uint32_t totalInodes;
 	uint32_t totalZones;
 	Zno firstDataZone;

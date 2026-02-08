@@ -20,7 +20,7 @@ ErrorCode Layout::fromSuperblock(const MinixSuperblock3 &sb)
 
 	zoneSize = blockSize << sb.s_log_zone_size;
 	blocksPerZone = zoneSize / blockSize;
-	indirectZonesPerBlock = blockSize / sizeof(uint32_t);
+	zonesPerIndirectBlock = blockSize / sizeof(uint32_t);
 	imapStart = MINIX3_IZONE_START_BLOCK;
 	zmapStart = imapStart + sb.s_imap_blocks;
 	inodeStart = zmapStart + sb.s_zmap_blocks;
