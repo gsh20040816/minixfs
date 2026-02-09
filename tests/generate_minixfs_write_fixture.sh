@@ -21,6 +21,9 @@ WORK_DIR="${FIXTURE_DIR}/.work"
 SEED_DIR="${WORK_DIR}/seed"
 KERNEL_MNT="${WORK_DIR}/kernel_mnt"
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+OPS_FILE="${SCRIPT_DIR}/write_existing_ops.sh"
+
 require_cmd() {
     if ! command -v "$1" >/dev/null 2>&1; then
         echo "FAIL: missing command '$1'" >&2
@@ -47,8 +50,14 @@ require_cmd mountpoint
 require_cmd cp
 require_cmd truncate
 require_cmd chown
+require_cmd dd
 require_cmd awk
 require_cmd losetup
+
+if [[ ! -r "${OPS_FILE}" ]]; then
+    echo "FAIL: missing ops script: ${OPS_FILE}" >&2
+    exit 1
+fi
 
 SUDO=()
 if [[ "${EUID}" -ne 0 ]]; then
@@ -60,7 +69,6 @@ if [[ "${EUID}" -ne 0 ]]; then
     fi
 fi
 
-# If launched via sudo, keep fixture ownership as the original user.
 OWNER_UID="${SUDO_UID:-$(id -u)}"
 OWNER_GID="${SUDO_GID:-$(id -g)}"
 LOOP_DEV=""
@@ -98,8 +106,11 @@ mkfs.minix -3 "${IMG}" >/dev/null
 printf "hello from minixfs\n" > "${SEED_DIR}/hello.txt"
 printf "nested text\n" > "${SEED_DIR}/dir_a/dir_b/nested.txt"
 : > "${SEED_DIR}/empty.txt"
-emit_pattern_bytes 4096 "BLOB-DATA-0123456789abcdef" > "${SEED_DIR}/blob.bin"
-emit_pattern_bytes $((2 * 1024 * 1024 + 123)) "LARGE-DATA-0123456789abcdef" > "${SEED_DIR}/large.bin"
+
+emit_pattern_bytes $((3 * 1024 * 1024 + 321)) "LARGE-SEED-DATA-0123456789abcdef" > "${SEED_DIR}/large.bin"
+
+printf "SPARSE-BASE\n" > "${SEED_DIR}/sparse.bin"
+printf "SPARSE-END\n" | dd of="${SEED_DIR}/sparse.bin" bs=1 seek=$((2 * 1024 * 1024 + 1)) conv=notrunc status=none
 
 ensure_loop_node
 if ! LOOP_DEV="$("${SUDO[@]}" losetup -f --show "${IMG}" 2>&1)"; then
@@ -109,26 +120,10 @@ if ! LOOP_DEV="$("${SUDO[@]}" losetup -f --show "${IMG}" 2>&1)"; then
     exit 1
 fi
 "${SUDO[@]}" mount -t minix "${LOOP_DEV}" "${KERNEL_MNT}"
-"${SUDO[@]}" cp -a --sparse=always "${SEED_DIR}/." "${KERNEL_MNT}/"
-# Create sparse file directly inside Minix image to ensure holes are present.
-"${SUDO[@]}" bash -c '
-set -euo pipefail
-emit_pattern_bytes() {
-    local size="$1"
-    local pattern="$2"
-    awk -v n="${size}" -v pat="${pattern}" '"'"'
-BEGIN {
-    l = length(pat);
-    for (i = 0; i < n; i++) {
-        printf "%s", substr(pat, (i % l) + 1, 1);
-    }
-}'"'"'
-}
-printf "SPARSE-START\n" > "'"${KERNEL_MNT}"'/sparse.bin"
-emit_pattern_bytes 4096 "SPARSE-BLOCK-0123456789abcdefghijklmnopqrstuvwxyz" \
-    | dd of="'"${KERNEL_MNT}"'/sparse.bin" bs=1 seek=$((2 * 1024 * 1024 + 37)) conv=notrunc status=none
-printf "SPARSE-END-TRAIL" | dd of="'"${KERNEL_MNT}"'/sparse.bin" bs=1 seek=$((5 * 1024 * 1024 - 16)) conv=notrunc status=none
-'
+"${SUDO[@]}" cp -a "${SEED_DIR}/." "${KERNEL_MNT}/"
+
+# shellcheck disable=SC2016
+"${SUDO[@]}" bash -c 'source "'"${OPS_FILE}"'"; apply_write_existing_ops "'"${KERNEL_MNT}"'"'
 sync
 
 make_manifest() {
@@ -153,6 +148,5 @@ mkdir -p "${EXPECTED_DIR}"
 LOOP_DEV=""
 
 "${SUDO[@]}" chown -R "${OWNER_UID}:${OWNER_GID}" "${FIXTURE_DIR}"
-
 rm -rf "${WORK_DIR}"
-echo "Generated fixture at: ${FIXTURE_DIR}"
+echo "Generated write fixture at: ${FIXTURE_DIR}"

@@ -55,4 +55,16 @@ if(BUILD_TESTING)
         SKIP_RETURN_CODE 77
         TIMEOUT 180
     )
+
+    add_test(
+        NAME minixfs_write_existing_consistency
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tests/minixfs_write_existing_consistency.sh
+                $<TARGET_FILE:minixfs-fuse>
+                ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures_write
+                ${CMAKE_CURRENT_BINARY_DIR}/ctest/minixfs_write_existing_consistency
+    )
+    set_tests_properties(minixfs_write_existing_consistency PROPERTIES
+        SKIP_RETURN_CODE 77
+        TIMEOUT 180
+    )
 endif()
