@@ -26,11 +26,28 @@ static int fs_getattr(const char *path, struct stat *st, fuse_file_info *fi)
 	return 0;
 }
 
+static int fs_opendir(const char *path, fuse_file_info *fi)
+{
+	ErrorCode err;
+	struct stat st = g_FileSystem.getFileStat(path, err);
+	if (err != SUCCESS)
+	{
+		return errorCodeToInt(err);
+	}
+	if (!S_ISDIR(st.st_mode))
+	{
+		return -ENOTDIR;
+	}
+	fi->fh = st.st_ino;
+	return 0;
+}
+
 static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, fuse_file_info *fi, enum fuse_readdir_flags flags)
 {
 	ErrorCode err;
 	FS &fs = g_FileSystem;
-	int32_t totalEntries = fs.getDirectorySize(path, err);
+	Ino inodeNumber = fi->fh;
+	int32_t totalEntries = fs.getDirectorySize(inodeNumber, err);
 	if (err != SUCCESS)
 	{
 		return errorCodeToInt(err);
@@ -41,7 +58,7 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t
 	}
 	while (offset < totalEntries)
 	{
-		std::vector<DirEntry> entries = fs.listDir(path, offset, 1, err);
+		std::vector<DirEntry> entries = fs.listDir(inodeNumber, offset, 1, err);
 		if (err != SUCCESS)
 		{
 			return errorCodeToInt(err);
@@ -60,6 +77,16 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t
 		}
 		offset += 1;
 	}
+	return 0;
+}
+
+static int fs_releasedir(const char *path, fuse_file_info *fi)
+{
+	return 0;
+}
+
+static int fs_fsyncdir(const char *path, int isdatasync, fuse_file_info *fi)
+{
 	return 0;
 }
 
@@ -140,7 +167,10 @@ static struct fuse_operations makeFsOperations()
 	struct fuse_operations ops = {};
 	ops.init = fs_init;
 	ops.getattr = fs_getattr;
+	ops.opendir = fs_opendir;
 	ops.readdir = fs_readdir;
+	ops.releasedir = fs_releasedir;
+	ops.fsyncdir = fs_fsyncdir;
 	ops.open = fs_open;
 	ops.read = fs_read;
 	ops.write = fs_write;

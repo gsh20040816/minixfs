@@ -179,15 +179,10 @@ struct stat FS::getFileStat(const std::string &path, ErrorCode &outError)
 	return g_InodeReader.readStat(inodeNumber, outError);
 }
 
-uint32_t FS::getDirectorySize(const std::string &path, ErrorCode &outError)
+uint32_t FS::getDirectorySize(Ino inodeNumber, ErrorCode &outError)
 {
-	Ino dirInodeNumber = g_PathResolver.resolvePath(path, outError);
-	if (outError != SUCCESS)
-	{
-		return 0;
-	}
 	MinixInode3 dirInode;
-	ErrorCode err = g_InodeReader.readInode(dirInodeNumber, &dirInode);
+	ErrorCode err = g_InodeReader.readInode(inodeNumber, &dirInode);
 	if (err != SUCCESS)
 	{
 		outError = err;
@@ -202,6 +197,21 @@ uint32_t FS::getDirectorySize(const std::string &path, ErrorCode &outError)
 	return dirInode.i_size / sizeof(DirEntryOnDisk);
 }
 
+uint32_t FS::getDirectorySize(const std::string &path, ErrorCode &outError)
+{
+	Ino dirInodeNumber = g_PathResolver.resolvePath(path, outError);
+	if (outError != SUCCESS)
+	{
+		return 0;
+	}
+	return getDirectorySize(dirInodeNumber, outError);
+}
+
+std::vector<DirEntry> FS::listDir(Ino inodeNumber, uint32_t offset, uint32_t count, ErrorCode &outError)
+{
+	return g_DirReader.readDir(inodeNumber, offset, count, outError);
+}
+
 std::vector<DirEntry> FS::listDir(const std::string &path, uint32_t offset, uint32_t count, ErrorCode &outError)
 {
 	Ino dirInodeNumber = g_PathResolver.resolvePath(path, outError);
@@ -209,18 +219,13 @@ std::vector<DirEntry> FS::listDir(const std::string &path, uint32_t offset, uint
 	{
 		return {};
 	}
-	return g_DirReader.readDir(dirInodeNumber, offset, count, outError);
+	return listDir(dirInodeNumber, offset, count, outError);
 }
 
-std::vector<DirEntry> FS::listDir(const std::string &path, ErrorCode &outError)
+std::vector<DirEntry> FS::listDir(Ino inodeNumber, ErrorCode &outError)
 {
-	Ino dirInodeNumber = g_PathResolver.resolvePath(path, outError);
-	if (outError != SUCCESS)
-	{
-		return {};
-	}
 	MinixInode3 dirInode;
-	ErrorCode err = g_InodeReader.readInode(dirInodeNumber, &dirInode);
+	ErrorCode err = g_InodeReader.readInode(inodeNumber, &dirInode);
 	if (err != SUCCESS)
 	{
 		outError = err;
@@ -232,7 +237,17 @@ std::vector<DirEntry> FS::listDir(const std::string &path, ErrorCode &outError)
 		return {};
 	}
 	uint32_t totalEntries = dirInode.i_size / sizeof(DirEntryOnDisk);
-	return g_DirReader.readDir(dirInodeNumber, 0, totalEntries, outError);
+	return g_DirReader.readDir(inodeNumber, 0, totalEntries, outError);
+}
+
+std::vector<DirEntry> FS::listDir(const std::string &path, ErrorCode &outError)
+{
+	Ino dirInodeNumber = g_PathResolver.resolvePath(path, outError);
+	if (outError != SUCCESS)
+	{
+		return {};
+	}
+	return listDir(dirInodeNumber, outError);
 }
 
 std::string FS::readLink(const std::string &path, ErrorCode &outError)

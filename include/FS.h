@@ -44,7 +44,10 @@ public:
 	ErrorCode mount();
 	ErrorCode unmount();
 	uint16_t getBlockSize() const;
+	uint32_t getDirectorySize(Ino inodeNumber, ErrorCode &outError);
 	uint32_t getDirectorySize(const std::string &path, ErrorCode &outError);
+	std::vector<DirEntry> listDir(Ino inodeNumber, uint32_t offset, uint32_t count, ErrorCode &outError);
+	std::vector<DirEntry> listDir(Ino inodeNumber, ErrorCode &outError);
 	std::vector<DirEntry> listDir(const std::string &path, uint32_t offset, uint32_t count, ErrorCode &outError);
 	std::vector<DirEntry> listDir(const std::string &path, ErrorCode &outError);
 	uint32_t readFile(const std::string &path, uint8_t *buffer, uint32_t offset, uint32_t sizeToRead, ErrorCode &outError);
