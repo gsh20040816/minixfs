@@ -23,6 +23,22 @@ std::vector<std::string> splitPath(const std::string &path)
 	return components;
 }
 
+std::pair<std::string, std::string> splitPathIntoDirAndBase(const std::string &path)
+{
+	size_t lastSlash = path.rfind('/');
+	if (lastSlash == std::string::npos)
+	{
+		return {"/", path};
+	}
+	std::string dirPart = path.substr(0, lastSlash);
+	std::string basePart = path.substr(lastSlash + 1);
+	if (dirPart.empty())
+	{
+		dirPart = "/";
+	}
+	return {dirPart, basePart};
+}
+
 std::string char60ToString(const char str[60])
 {
 	size_t length = 0;
@@ -77,6 +93,10 @@ int errorCodeToInt(ErrorCode code)
 		return -ENAMETOOLONG;
 	case ERROR_LINK_EMPTY:
 		return -EINVAL;
+	case ERROR_NAME_LENGTH_EXCEEDED:
+		return -ENAMETOOLONG;
+	case ERROR_FILE_NAME_EXISTS:
+		return -EEXIST;
 	default:
 		return -EIO;
 	}

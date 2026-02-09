@@ -28,38 +28,44 @@ void FileCreator::setImapAllocator(Allocator &imapAllocator)
 	this->imapAllocator = &imapAllocator;
 }
 
-ErrorCode FileCreator::createFile(Ino parentInodeNumber, const std::string &name, uint16_t mode, uint16_t uid, uint16_t gid)
+Ino FileCreator::createFile(Ino parentInodeNumber, const std::string &name, uint16_t mode, uint16_t uid, uint16_t gid, ErrorCode &outError)
 {
 	if (name.empty() || name.length() > MINIX3_DIR_NAME_MAX)
 	{
-		return ERROR_NAME_LENGTH_EXCEEDED;
+		outError = ERROR_NAME_LENGTH_EXCEEDED;
+		return 0;
 	}
 	MinixInode3 parentInode;
 	ErrorCode err = inodeReader->readInode(parentInodeNumber, &parentInode);
 	if (err != SUCCESS)
 	{
-		return err;
+		outError = err;
+		return 0;
 	}
 	if (!parentInode.isDirectory())
 	{
-		return ERROR_NOT_DIRECTORY;
+		outError = ERROR_NOT_DIRECTORY;
+		return 0;
 	}
 	std::vector<DirEntry> entries = dirReader->readDir(parentInodeNumber, 0, parentInode.i_size / sizeof(DirEntryOnDisk), err);
 	if (err != SUCCESS)
 	{
-		return err;
+		outError = err;
+		return 0;
 	}
 	for (const DirEntry &entry : entries)
 	{
 		if (char60ToString(entry.raw.d_name) == name)
 		{
-			return ERROR_FILE_NAME_EXISTS;
+			outError = ERROR_FILE_NAME_EXISTS;
+			return 0;
 		}
 	}
 	Ino newInodeNumber = imapAllocator->allocateBmap(err);
 	if (err != SUCCESS)
 	{
-		return err;
+		outError = err;
+		return 0;
 	}
 	MinixInode3 newInode = {};
 	newInode.i_mode = mode;
@@ -75,15 +81,18 @@ ErrorCode FileCreator::createFile(Ino parentInodeNumber, const std::string &name
 	if (err != SUCCESS)
 	{
 		imapAllocator->freeBmap(newInodeNumber);
-		return err;
+		outError = err;
+		return 0;
 	}
 	uint32_t entryIndex;
 	err = dirWriter->addDirEntry(parentInodeNumber, newInodeNumber, name, entryIndex);
 	if (err != SUCCESS)
 	{
 		imapAllocator->freeBmap(newInodeNumber);
-		return err;
+		outError = err;
+		return 0;
 	}
 	imapAllocator->sync();
-	return SUCCESS;
+	outError = SUCCESS;
+	return newInodeNumber;
 }

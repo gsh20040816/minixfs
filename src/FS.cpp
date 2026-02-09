@@ -181,6 +181,21 @@ uint32_t FS::writeFile(const std::string &path, const uint8_t *data, uint32_t of
 	return writeFile(inodeNumber, data, offset, sizeToWrite, outError);
 }
 
+Ino FS::createFile(const std::string &path, const std::string &name, uint16_t mode, uint16_t uid, uint16_t gid, ErrorCode &outError)
+{
+	Ino parentInodeNumber = g_PathResolver.resolvePath(path, outError);
+	if (outError != SUCCESS)
+	{
+		return 0;
+	}
+	Ino newInodeNumber = g_FileCreator.createFile(parentInodeNumber, name, mode, uid, gid, outError);
+	if (outError != SUCCESS)
+	{
+		return 0;
+	}
+	return newInodeNumber;
+}
+
 struct stat FS::getFileStat(const std::string &path, ErrorCode &outError)
 {
 	Ino inodeNumber = g_PathResolver.resolvePath(path, outError, MINIX3_ROOT_INODE, false);

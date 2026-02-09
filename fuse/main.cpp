@@ -130,6 +130,20 @@ static int fs_write(const char *path, const char *buf, size_t size, off_t offset
 	return static_cast<int>(bytesWritten);
 }
 
+static int fs_create(const char *path, mode_t mode, fuse_file_info *fi)
+{
+	FS &fs = g_FileSystem;
+	ErrorCode err;
+	auto [parentPath, name] = splitPathIntoDirAndBase(path);
+	Ino newInodeNumber = fs.createFile(parentPath, name, mode, fuse_get_context()->uid, fuse_get_context()->gid, err);
+	if (err != SUCCESS)
+	{
+		return errorCodeToInt(err);
+	}
+	fi->fh = newInodeNumber;
+	return 0;
+}
+
 static int fs_readlink(const char *path, char *buf, size_t size)
 {
 	FS &fs = g_FileSystem;
@@ -173,6 +187,7 @@ static struct fuse_operations makeFsOperations()
 	ops.fsyncdir = fs_fsyncdir;
 	ops.open = fs_open;
 	ops.read = fs_read;
+	ops.create = fs_create;
 	ops.write = fs_write;
 	ops.readlink = fs_readlink;
 	ops.statfs = fs_statfs;

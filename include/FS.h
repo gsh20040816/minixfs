@@ -61,4 +61,5 @@ public:
 	struct stat getFileStat(const std::string &path, ErrorCode &outError);
 	std::string readLink(const std::string &path, ErrorCode &outError);
 	struct statvfs getFSStat(ErrorCode &outError);
+	Ino createFile(const std::string &path, const std::string &name, uint16_t mode, uint16_t uid, uint16_t gid, ErrorCode &outError);
 };

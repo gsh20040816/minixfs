@@ -16,5 +16,5 @@ struct FileCreator
 	void setDirReader(DirReader &dirReader);
 	void setDirWriter(DirWriter &dirWriter);
 	void setImapAllocator(Allocator &imapAllocator);
-	ErrorCode createFile(Ino parentInodeNumber, const std::string &name, uint16_t mode, uint16_t uid, uint16_t gid);
+	Ino createFile(Ino parentInodeNumber, const std::string &name, uint16_t mode, uint16_t uid, uint16_t gid, ErrorCode &outError);
 };
