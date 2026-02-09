@@ -51,4 +51,5 @@ public:
 	uint32_t readFile(Ino inodeNumber, uint8_t *buffer, uint32_t offset, uint32_t sizeToRead, ErrorCode &outError);
 	uint32_t writeFile(Ino inodeNumber, const uint8_t *data, uint32_t offset, uint32_t sizeToWrite, ErrorCode &outError);
 	struct stat getFileStat(const std::string &path, ErrorCode &outError);
+	std::string readLink(const std::string &path, ErrorCode &outError);
 };

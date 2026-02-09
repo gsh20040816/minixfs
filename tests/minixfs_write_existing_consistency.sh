@@ -25,6 +25,8 @@ require_cmd diff
 require_cmd stat
 require_cmd dd
 require_cmd awk
+require_cmd readlink
+require_cmd cmp
 
 if [[ ! -x "$FUSE_BIN" ]]; then
     echo "FAIL: fuse binary not executable: $FUSE_BIN" >&2
@@ -52,6 +54,8 @@ FIXTURE_METADATA="${FIXTURE_DIR}/metadata.txt"
 FUSE_MNT="${WORK_DIR}/fuse_mnt"
 FUSE_LOG="${WORK_DIR}/fuse.log"
 META_FUSE="${WORK_DIR}/fuse.meta"
+SYMLINK_EXPECTED="${WORK_DIR}/expected.symlink"
+SYMLINK_FUSE="${WORK_DIR}/fuse.symlink"
 
 FUSE_PID=""
 cleanup() {
@@ -102,7 +106,31 @@ if ! mount_fuse; then
     exit 1
 fi
 
+if [[ ! -L "${EXPECTED_DIR}/hello.link" ]]; then
+    echo "SKIP: fixture missing symlink sample, run tests/generate_minixfs_write_fixture.sh first" >&2
+    exit 77
+fi
+
 diff -ruN "${EXPECTED_DIR}" "${FUSE_MNT}"
+
+make_symlink_manifest() {
+    local root="$1"
+    local out="$2"
+    : > "${out}"
+    while IFS= read -r rel; do
+        local path="${root}/${rel}"
+        local target
+        target="$(readlink "${path}")"
+        printf '%s|%s\n' "${rel}" "${target}" >> "${out}"
+    done < <(cd "${root}" && find . -mindepth 1 -type l -printf '%P\n' | sort)
+}
+
+make_symlink_manifest "${EXPECTED_DIR}" "${SYMLINK_EXPECTED}"
+make_symlink_manifest "${FUSE_MNT}" "${SYMLINK_FUSE}"
+diff -u "${SYMLINK_EXPECTED}" "${SYMLINK_FUSE}"
+
+cmp "${EXPECTED_DIR}/hello.link" "${FUSE_MNT}/hello.link"
+cmp "${EXPECTED_DIR}/dir_link/nested.txt" "${FUSE_MNT}/dir_link/nested.txt"
 
 make_manifest() {
     local root="$1"

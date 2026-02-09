@@ -106,6 +106,9 @@ mkfs.minix -3 "${IMG}" >/dev/null
 printf "hello from minixfs\n" > "${SEED_DIR}/hello.txt"
 printf "nested text\n" > "${SEED_DIR}/dir_a/dir_b/nested.txt"
 : > "${SEED_DIR}/empty.txt"
+ln -s "hello.txt" "${SEED_DIR}/hello.link"
+ln -s "dir_a/dir_b" "${SEED_DIR}/dir_link"
+ln -s "not-exists.txt" "${SEED_DIR}/dangling.link"
 
 emit_pattern_bytes $((3 * 1024 * 1024 + 321)) "LARGE-SEED-DATA-0123456789abcdef" > "${SEED_DIR}/large.bin"
 

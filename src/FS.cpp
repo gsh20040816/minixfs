@@ -234,3 +234,21 @@ std::vector<DirEntry> FS::listDir(const std::string &path, ErrorCode &outError)
 	uint32_t totalEntries = dirInode.i_size / sizeof(DirEntryOnDisk);
 	return g_DirReader.readDir(dirInodeNumber, 0, totalEntries, outError);
 }
+
+std::string FS::readLink(const std::string &path, ErrorCode &outError)
+{
+	Ino inodeNumber = g_PathResolver.resolvePath(path, outError, MINIX3_ROOT_INODE, false);
+	if (outError != SUCCESS)
+	{
+		return {};
+	}
+	std::string linkTarget;
+	ErrorCode err = g_LinkReader.readLink(inodeNumber, linkTarget);
+	if (err != SUCCESS)
+	{
+		outError = err;
+		return {};
+	}
+	outError = SUCCESS;
+	return linkTarget;
+}

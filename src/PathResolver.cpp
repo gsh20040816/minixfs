@@ -68,7 +68,7 @@ Ino PathResolver::getInodeFromParentAndName(Ino parentInodeNumber, const std::st
 	return 0;
 }
 
-Ino PathResolver::resolvePath(const std::string &path, ErrorCode &outError, Ino currentInode)
+Ino PathResolver::resolvePath(const std::string &path, ErrorCode &outError, Ino currentInode, bool resolveLastLink)
 {
 	std::vector<std::string> components = splitPath(path);
 	bool isResolveStart = false;
@@ -100,6 +100,19 @@ Ino PathResolver::resolvePath(const std::string &path, ErrorCode &outError, Ino 
 				resolvePathInProgress = false;
 			}
 			return 0;
+		}
+		if (currentInode == 0)
+		{
+			outError = ERROR_FILE_NOT_FOUND;
+			if (isResolveStart)
+			{
+				resolvePathInProgress = false;
+			}
+			return 0;
+		}
+		if (!resolveLastLink && &component == &components.back())
+		{
+			break;
 		}
 		MinixInode3 inode;
 		err = inodeReader->readInode(currentInode, &inode);
@@ -134,7 +147,7 @@ Ino PathResolver::resolvePath(const std::string &path, ErrorCode &outError, Ino 
 				}
 				return 0;
 			}
-			currentInode = resolvePath(linkTarget, err, linkTarget[0] == '/' ? MINIX3_ROOT_INODE : parentInode);
+			currentInode = resolvePath(linkTarget, err, linkTarget[0] == '/' ? MINIX3_ROOT_INODE : parentInode, resolveLastLink);
 			if (err != SUCCESS)
 			{
 				outError = err;

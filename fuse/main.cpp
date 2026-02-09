@@ -103,6 +103,25 @@ static int fs_write(const char *path, const char *buf, size_t size, off_t offset
 	return static_cast<int>(bytesWritten);
 }
 
+static int fs_readlink(const char *path, char *buf, size_t size)
+{
+	FS &fs = g_FileSystem;
+	ErrorCode err;
+	if (size == 0)
+	{
+		return -ERANGE;
+	}
+	std::string linkTarget = fs.readLink(path, err);
+	if (err != SUCCESS)
+	{
+		return errorCodeToInt(err);
+	}
+	uint32_t copySize = std::min(static_cast<uint32_t>(size - 1), static_cast<uint32_t>(linkTarget.size()));
+	std::memcpy(buf, linkTarget.c_str(), copySize);
+	buf[copySize] = '\0';
+	return 0;
+}
+
 static struct fuse_operations makeFsOperations()
 {
 	struct fuse_operations ops = {};
@@ -112,6 +131,7 @@ static struct fuse_operations makeFsOperations()
 	ops.open = fs_open;
 	ops.read = fs_read;
 	ops.write = fs_write;
+	ops.readlink = fs_readlink;
 	return ops;
 }
 

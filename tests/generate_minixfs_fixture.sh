@@ -100,6 +100,9 @@ printf "nested text\n" > "${SEED_DIR}/dir_a/dir_b/nested.txt"
 : > "${SEED_DIR}/empty.txt"
 emit_pattern_bytes 4096 "BLOB-DATA-0123456789abcdef" > "${SEED_DIR}/blob.bin"
 emit_pattern_bytes $((2 * 1024 * 1024 + 123)) "LARGE-DATA-0123456789abcdef" > "${SEED_DIR}/large.bin"
+ln -s "hello.txt" "${SEED_DIR}/hello.link"
+ln -s "dir_a/dir_b" "${SEED_DIR}/dir_link"
+ln -s "not-exists.txt" "${SEED_DIR}/dangling.link"
 
 ensure_loop_node
 if ! LOOP_DEV="$("${SUDO[@]}" losetup -f --show "${IMG}" 2>&1)"; then
