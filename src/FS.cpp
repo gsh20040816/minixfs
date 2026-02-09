@@ -66,8 +66,12 @@ ErrorCode FS::mount()
 	g_DirReader.setInodeReader(g_InodeReader);
 	g_DirReader.setFileReader(g_FileReader);
 
+	g_LinkReader.setInodeReader(g_InodeReader);
+	g_LinkReader.setFileReader(g_FileReader);
+
 	g_PathResolver.setInodeReader(g_InodeReader);
 	g_PathResolver.setDirReader(g_DirReader);
+	g_PathResolver.setLinkReader(g_LinkReader);
 
 	g_imapAllocator.setBlockDevice(bd);
 	err = g_imapAllocator.init(layout.imapStart, layout.totalInodes + 1, 1, layout.blockSize);

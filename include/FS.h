@@ -13,6 +13,7 @@
 #include "FileMapper.h"
 #include "DirReader.h"
 #include "PathResolver.h"
+#include "LinkReader.h"
 #include "Allocator.h"
 #include <string>
 #include <cstdint>
@@ -31,6 +32,7 @@ private:
 	FileReader g_FileReader;
 	FileWriter g_FileWriter;
 	DirReader g_DirReader;
+	LinkReader g_LinkReader;
 	PathResolver g_PathResolver;
 	Allocator g_imapAllocator;
 	Allocator g_zmapAllocator;

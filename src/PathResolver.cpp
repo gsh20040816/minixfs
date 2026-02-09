@@ -1,5 +1,6 @@
 #include "PathResolver.h"
 #include "Utils.h"
+#include "Constants.h"
 
 void PathResolver::setInodeReader(InodeReader &inodeReader)
 {
@@ -9,6 +10,11 @@ void PathResolver::setInodeReader(InodeReader &inodeReader)
 void PathResolver::setDirReader(DirReader &dirReader)
 {
 	this->dirReader = &dirReader;
+}
+
+void PathResolver::setLinkReader(LinkReader &linkReader)
+{
+	this->linkReader = &linkReader;
 }
 
 Ino PathResolver::getInodeFromParentAndName(Ino parentInodeNumber, const std::string &name, ErrorCode &outError)
@@ -62,20 +68,80 @@ Ino PathResolver::getInodeFromParentAndName(Ino parentInodeNumber, const std::st
 	return 0;
 }
 
-Ino PathResolver::resolvePath(const std::string &path, ErrorCode &outError)
+Ino PathResolver::resolvePath(const std::string &path, ErrorCode &outError, Ino currentInode)
 {
-	Ino currentInode = MINIX3_ROOT_INODE;
 	std::vector<std::string> components = splitPath(path);
+	bool isResolveStart = false;
+	if (!resolvePathInProgress)
+	{
+		resolvePathDepth = 0;
+		resolvePathInProgress = true;
+		isResolveStart = true;
+	}
+	Ino parentInode = currentInode;
 	for (const std::string &component: components)
 	{
+		if (resolvePathDepth++ >= MAX_PATH_DEPTH)
+		{
+			outError = ERROR_PATH_TOO_DEEP;
+			if (isResolveStart)
+			{
+				resolvePathInProgress = false;
+			}
+			return 0;
+		}
 		ErrorCode err;
 		currentInode = getInodeFromParentAndName(currentInode, component, err);
 		if (err != SUCCESS)
 		{
 			outError = err;
+			if (isResolveStart)
+			{
+				resolvePathInProgress = false;
+			}
 			return 0;
 		}
+		MinixInode3 inode;
+		err = inodeReader->readInode(currentInode, &inode);
+		if (err != SUCCESS)
+		{
+			outError = err;
+			if (isResolveStart)
+			{
+				resolvePathInProgress = false;
+			}
+			return 0;
+		}
+		if (inode.isSymbolicLink())
+		{
+			std::string linkTarget;
+			err = linkReader->readLink(currentInode, linkTarget);
+			if (err != SUCCESS)
+			{
+				outError = err;
+				if (isResolveStart)
+				{
+					resolvePathInProgress = false;
+				}
+				return 0;
+			}
+			currentInode = resolvePath(linkTarget, err, linkTarget[0] == '/' ? MINIX3_ROOT_INODE : parentInode);
+			if (err != SUCCESS)
+			{
+				outError = err;
+				if (isResolveStart)
+				{
+					resolvePathInProgress = false;
+				}
+				return 0;
+			}
+		}
+		parentInode = currentInode;
 	}
 	outError = SUCCESS;
+	if (isResolveStart)
+	{
+		resolvePathInProgress = false;
+	}
 	return currentInode;
 }
