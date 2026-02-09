@@ -17,6 +17,7 @@ fi
 IMG="${FIXTURE_DIR}/disk.img"
 EXPECTED_DIR="${FIXTURE_DIR}/expected"
 METADATA_FILE="${FIXTURE_DIR}/metadata.txt"
+STATFS_FILE="${FIXTURE_DIR}/statfs.txt"
 WORK_DIR="${FIXTURE_DIR}/.work"
 SEED_DIR="${WORK_DIR}/seed"
 KERNEL_MNT="${WORK_DIR}/kernel_mnt"
@@ -148,7 +149,14 @@ make_manifest() {
     done < <("${SUDO[@]}" bash -c "cd \"${root}\" && find . -mindepth 1 -printf '%P\n' | sort")
 }
 
+make_statfs_manifest() {
+    local root="$1"
+    local out="$2"
+    "${SUDO[@]}" stat -f -c 'bsize=%s|frsize=%S|blocks=%b|bfree=%f|bavail=%a|files=%c|ffree=%d|namemax=%l' "${root}" > "${out}"
+}
+
 make_manifest "${KERNEL_MNT}" "${METADATA_FILE}"
+make_statfs_manifest "${KERNEL_MNT}" "${STATFS_FILE}"
 mkdir -p "${EXPECTED_DIR}"
 "${SUDO[@]}" cp -a "${KERNEL_MNT}/." "${EXPECTED_DIR}/"
 "${SUDO[@]}" umount "${KERNEL_MNT}"

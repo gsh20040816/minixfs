@@ -39,9 +39,11 @@ fi
 IMG="${FIXTURE_DIR}/disk.img"
 EXPECTED_DIR="${FIXTURE_DIR}/expected"
 FIXTURE_METADATA="${FIXTURE_DIR}/metadata.txt"
+FIXTURE_STATFS="${FIXTURE_DIR}/statfs.txt"
 FUSE_MNT="${WORK_DIR}/fuse_mnt"
 FUSE_LOG="${WORK_DIR}/fuse.log"
 META_FUSE="${WORK_DIR}/fuse.meta"
+STATFS_FUSE="${WORK_DIR}/fuse.statfs"
 SYMLINK_EXPECTED="${WORK_DIR}/expected.symlink"
 SYMLINK_FUSE="${WORK_DIR}/fuse.symlink"
 
@@ -118,5 +120,32 @@ make_manifest() {
 
 make_manifest "${FUSE_MNT}" "${META_FUSE}"
 diff -u "${FIXTURE_METADATA}" "${META_FUSE}"
+
+make_statfs_manifest() {
+    local root="$1"
+    local out="$2"
+    stat -f -c 'bsize=%s|frsize=%S|blocks=%b|bfree=%f|bavail=%a|files=%c|ffree=%d|namemax=%l' "${root}" > "${out}"
+}
+
+validate_statfs_sanity() {
+    local root="$1"
+    local blocks bfree bavail files ffree
+    blocks="$(stat -f -c '%b' "${root}")"
+    bfree="$(stat -f -c '%f' "${root}")"
+    bavail="$(stat -f -c '%a' "${root}")"
+    files="$(stat -f -c '%c' "${root}")"
+    ffree="$(stat -f -c '%d' "${root}")"
+    if (( bfree > blocks || bavail > bfree || ffree > files )); then
+        echo "FAIL: statfs sanity check failed: blocks=${blocks} bfree=${bfree} bavail=${bavail} files=${files} ffree=${ffree}" >&2
+        exit 1
+    fi
+}
+
+make_statfs_manifest "${FUSE_MNT}" "${STATFS_FUSE}"
+if [[ -r "${FIXTURE_STATFS}" ]]; then
+    diff -u "${FIXTURE_STATFS}" "${STATFS_FUSE}"
+else
+    validate_statfs_sanity "${FUSE_MNT}"
+fi
 
 echo "PASS: kernel minix and fuse views are consistent"

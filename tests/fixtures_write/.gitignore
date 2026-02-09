@@ -1,3 +1,4 @@
 disk.img
 expected/*
 metadata.txt
+statfs.txt
