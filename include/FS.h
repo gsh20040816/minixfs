@@ -10,8 +10,10 @@
 #include "InodeWriter.h"
 #include "FileReader.h"
 #include "FileWriter.h"
+#include "FileCreator.h"
 #include "FileMapper.h"
 #include "DirReader.h"
+#include "DirWriter.h"
 #include "PathResolver.h"
 #include "LinkReader.h"
 #include "Allocator.h"
@@ -32,7 +34,9 @@ private:
 	FileMapper g_FileMapper;
 	FileReader g_FileReader;
 	FileWriter g_FileWriter;
+	FileCreator g_FileCreator;
 	DirReader g_DirReader;
+	DirWriter g_DirWriter;
 	LinkReader g_LinkReader;
 	PathResolver g_PathResolver;
 	Allocator g_imapAllocator;

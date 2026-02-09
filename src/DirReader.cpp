@@ -32,7 +32,7 @@ ErrorCode DirReader::readDirRaw(Ino dirInodeNumber, uint8_t *buffer, uint32_t si
 	return readDirRaw(dirInode, buffer, sizeToRead, offset);
 }
 
-std::vector<DirEntry> DirReader::readDir(Ino dirInodeNumber, uint32_t offset, uint32_t count, ErrorCode &outError)
+std::vector<DirEntry> DirReader::readDir(Ino dirInodeNumber, uint32_t offset, uint32_t count, ErrorCode &outError, bool keepInode0Entries)
 {
 	std::vector<DirEntry> entries;
 	MinixInode3 dirInode;
@@ -76,11 +76,17 @@ std::vector<DirEntry> DirReader::readDir(Ino dirInodeNumber, uint32_t offset, ui
 	for (uint32_t offset = 0; offset < entriesToRead * sizeof(DirEntryOnDisk); offset += sizeof(DirEntryOnDisk))
 	{
 		DirEntryOnDisk *entryOnDisk = reinterpret_cast<DirEntryOnDisk*>(dirData + offset);
-		if (entryOnDisk->d_inode != 0)
+		if (keepInode0Entries || entryOnDisk->d_inode != 0)
 		{
 			DirEntry entry;
 			entry.raw = *entryOnDisk;
 			memcpy(entry.raw.d_name, entryOnDisk->d_name, MINIX3_DIR_NAME_MAX);
+			if (entry.raw.d_inode == 0)
+			{
+				entry.st = {};
+				entries.push_back(entry);
+				continue;
+			}
 			MinixInode3 entryInode;
 			err = inodeReader->readInode(entryOnDisk->d_inode, &entryInode);
 			if (err != SUCCESS)

@@ -67,6 +67,17 @@ ErrorCode FS::mount()
 	g_DirReader.setInodeReader(g_InodeReader);
 	g_DirReader.setFileReader(g_FileReader);
 
+	g_DirWriter.setInodeReader(g_InodeReader);
+	g_DirWriter.setInodeWriter(g_InodeWriter);
+	g_DirWriter.setDirReader(g_DirReader);
+	g_DirWriter.setFileWriter(g_FileWriter);
+
+	g_FileCreator.setInodeReader(g_InodeReader);
+	g_FileCreator.setInodeWriter(g_InodeWriter);
+	g_FileCreator.setDirReader(g_DirReader);
+	g_FileCreator.setDirWriter(g_DirWriter);
+	g_FileCreator.setImapAllocator(g_imapAllocator);
+
 	g_LinkReader.setInodeReader(g_InodeReader);
 	g_LinkReader.setFileReader(g_FileReader);
 
