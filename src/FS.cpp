@@ -258,8 +258,8 @@ struct statvfs FS::getFSStat(ErrorCode &outError)
 	struct statvfs st{};
 	st.f_bsize = g_Layout.blockSize;
 	st.f_frsize = g_Layout.blockSize;
-	st.f_blocks = g_Layout.totalZones * g_Layout.blocksPerZone;
-	st.f_bfree = g_Layout.totalZones * g_Layout.blocksPerZone - g_zmapAllocator.getAllocatedCount();
+	st.f_blocks = (g_Layout.totalZones - g_Layout.firstDataZone) * g_Layout.blocksPerZone;
+	st.f_bfree = (g_Layout.totalZones - g_Layout.firstDataZone - g_zmapAllocator.getAllocatedCount()) * g_Layout.blocksPerZone;
 	st.f_bavail = st.f_bfree;
 	st.f_files = g_Layout.totalInodes;
 	st.f_ffree = g_Layout.totalInodes - g_imapAllocator.getAllocatedCount();
