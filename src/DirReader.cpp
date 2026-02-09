@@ -83,9 +83,19 @@ std::vector<DirEntry> DirReader::readDir(Ino dirInodeNumber, uint32_t offset, ui
 			memcpy(entry.raw.d_name, entryOnDisk->d_name, MINIX3_DIR_NAME_MAX);
 			MinixInode3 entryInode;
 			err = inodeReader->readInode(entryOnDisk->d_inode, &entryInode);
-			if (err != SUCCESS) continue;
+			if (err != SUCCESS)
+			{
+				free(dirData);
+				outError = err;
+				return entries;
+			}
 			entry.st = inodeReader->readStat(entryOnDisk->d_inode, err);
-			if (err != SUCCESS) continue;
+			if (err != SUCCESS)
+			{
+				free(dirData);
+				outError = err;
+				return entries;
+			}
 			entries.push_back(entry);
 		}
 	}

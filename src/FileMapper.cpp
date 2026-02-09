@@ -22,6 +22,11 @@ void FileMapper::setBlocksPerZone(uint32_t blocksPerZone)
 	this->blocksPerZone = blocksPerZone;
 }
 
+void FileMapper::setBlockSize(uint32_t blockSize)
+{
+	this->blockSize = blockSize;
+}
+
 void FileMapper::setZmapAllocator(Allocator &zmapAllocator)
 {
 	this->zmapAllocator = &zmapAllocator;
@@ -41,6 +46,11 @@ ErrorCode FileMapper::mapLogicalToPhysical(MinixInode3 &inode, Zno logicalZoneIn
 	{
 		ErrorCode err = SUCCESS;
 		outZone = zmapAllocator->allocateBmap(err);
+		if (err != SUCCESS)
+		{
+			return err;
+		}
+		err = blockDevice->writeZone(outZone, std::vector<uint8_t>(blocksPerZone * blockSize, 0).data());
 		return err;
 	};
 	auto initIndirectBlock = [&](Zno zoneNumber) -> ErrorCode

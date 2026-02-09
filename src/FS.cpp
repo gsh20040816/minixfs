@@ -52,6 +52,7 @@ ErrorCode FS::mount()
 	g_FileMapper.setInodeReader(g_InodeReader);
 	g_FileMapper.setZonesPerIndirectBlock(layout.zonesPerIndirectBlock);
 	g_FileMapper.setBlocksPerZone(layout.blocksPerZone);
+	g_FileMapper.setBlockSize(layout.blockSize);
 
 	g_FileReader.setBlockDevice(bd);
 	g_FileReader.setLayout(layout);
