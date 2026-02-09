@@ -171,7 +171,7 @@ uint32_t FS::writeFile(const std::string &path, const uint8_t *data, uint32_t of
 
 struct stat FS::getFileStat(const std::string &path, ErrorCode &outError)
 {
-	Ino inodeNumber = g_PathResolver.resolvePath(path, outError);
+	Ino inodeNumber = g_PathResolver.resolvePath(path, outError, MINIX3_ROOT_INODE, false);
 	if (outError != SUCCESS)
 	{
 		return {};

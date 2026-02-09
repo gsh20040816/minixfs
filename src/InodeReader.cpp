@@ -50,7 +50,7 @@ struct stat InodeReader::readStat(Ino inodeNumber, ErrorCode &outError)
 	}
 	st.st_ino = inodeNumber;
 	st.st_mode = inode.i_mode;
-	st.st_size = inode.isRegularFile() || inode.isDirectory() ? inode.i_size : 0;
+	st.st_size = inode.i_size;
 	st.st_nlink = inode.i_nlinks;
 	st.st_uid = inode.i_uid;
 	st.st_gid = inode.i_gid;

@@ -111,7 +111,7 @@ if [[ ! -L "${EXPECTED_DIR}/hello.link" ]]; then
     exit 77
 fi
 
-diff -ruN "${EXPECTED_DIR}" "${FUSE_MNT}"
+diff -ruN --no-dereference "${EXPECTED_DIR}" "${FUSE_MNT}"
 
 make_symlink_manifest() {
     local root="$1"
