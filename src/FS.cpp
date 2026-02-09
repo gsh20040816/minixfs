@@ -252,3 +252,21 @@ std::string FS::readLink(const std::string &path, ErrorCode &outError)
 	outError = SUCCESS;
 	return linkTarget;
 }
+
+struct statvfs FS::getFSStat(ErrorCode &outError)
+{
+	struct statvfs st{};
+	st.f_bsize = g_Layout.blockSize;
+	st.f_frsize = g_Layout.blockSize;
+	st.f_blocks = g_Layout.totalZones * g_Layout.blocksPerZone;
+	st.f_bfree = g_Layout.totalZones * g_Layout.blocksPerZone - g_zmapAllocator.getAllocatedCount();
+	st.f_bavail = st.f_bfree;
+	st.f_files = g_Layout.totalInodes;
+	st.f_ffree = g_Layout.totalInodes - g_imapAllocator.getAllocatedCount();
+	st.f_favail = st.f_ffree;
+	st.f_fsid = 0;
+	st.f_flag = 0;
+	st.f_namemax = MINIX3_DIR_NAME_MAX;
+	outError = SUCCESS;
+	return st;
+}

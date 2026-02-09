@@ -31,4 +31,5 @@ struct Allocator
 	ErrorCode beginTransaction();
 	ErrorCode revertTransaction();
 	ErrorCode commitTransaction();
+	uint32_t getAllocatedCount() const;
 };

@@ -210,3 +210,21 @@ ErrorCode Allocator::commitTransaction()
 	transactionDirtyBlocks.clear();
 	return sync();
 }
+
+uint32_t Allocator::getAllocatedCount() const
+{
+	uint32_t count = 0;
+	for(uint32_t i = firstFreeBmap; i < totalBmaps; i++)
+	{
+		uint32_t bitIdx = i - firstFreeBmap + 1;
+		uint32_t block = bitIdx / bitsPerBlock;
+		uint32_t bitInBlock = bitIdx % bitsPerBlock;
+		uint32_t byteInBlock = bitInBlock / 8;
+		uint8_t bitMask = 1 << (bitInBlock % 8);
+		if ((bmapCache[block * blockSize + byteInBlock] & bitMask) != 0)
+		{
+			count++;
+		}
+	}
+	return count;
+}

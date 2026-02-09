@@ -122,6 +122,19 @@ static int fs_readlink(const char *path, char *buf, size_t size)
 	return 0;
 }
 
+static int fs_statfs(const char *path, struct statvfs *st)
+{
+	FS &fs = g_FileSystem;
+	ErrorCode err;
+	struct statvfs fsStat = fs.getFSStat(err);
+	if (err != SUCCESS)
+	{
+		return errorCodeToInt(err);
+	}
+	*st = fsStat;
+	return 0;
+}
+
 static struct fuse_operations makeFsOperations()
 {
 	struct fuse_operations ops = {};
@@ -132,6 +145,7 @@ static struct fuse_operations makeFsOperations()
 	ops.read = fs_read;
 	ops.write = fs_write;
 	ops.readlink = fs_readlink;
+	ops.statfs = fs_statfs;
 	return ops;
 }
 

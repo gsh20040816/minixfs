@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <vector>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 
 class FS
 {
@@ -52,4 +53,5 @@ public:
 	uint32_t writeFile(Ino inodeNumber, const uint8_t *data, uint32_t offset, uint32_t sizeToWrite, ErrorCode &outError);
 	struct stat getFileStat(const std::string &path, ErrorCode &outError);
 	std::string readLink(const std::string &path, ErrorCode &outError);
+	struct statvfs getFSStat(ErrorCode &outError);
 };
