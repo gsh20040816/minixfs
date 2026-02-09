@@ -27,10 +27,6 @@ ErrorCode LinkReader::readLink(Ino inodeNumber, std::string &outLinkTarget)
 	{
 		return ERROR_LINK_TOO_LONG;
 	}
-	if (linkSize == 0)
-	{
-		return ERROR_LINK_EMPTY;
-	}
 	uint8_t *linkData = static_cast<uint8_t*>(calloc(linkSize + 1, sizeof(uint8_t)));
 	if (linkData == nullptr)
 	{
