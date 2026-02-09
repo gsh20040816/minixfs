@@ -61,6 +61,22 @@ int errorCodeToInt(ErrorCode code)
 		return -ENOTDIR;
 	case ERROR_INVALID_INODE_NUMBER:
 		return -EIO;
+	case ERROR_CANNOT_ALLOCATE_BMAP:
+		return -ENOSPC;
+	case ERROR_FREEING_UNALLOCATED_BMAP:
+		return -EIO;
+	case ERROR_INVALID_BMAP_INDEX:
+		return -EIO;
+	case ERROR_INVALID_FILE_OFFSET:
+		return -EIO;
+	case ERROR_IS_IN_TRANSACTION:
+		return -EIO;
+	case ERROR_LINK_TOO_LONG:
+		return -ENAMETOOLONG;
+	case ERROR_PATH_TOO_DEEP:
+		return -ENAMETOOLONG;
+	case ERROR_LINK_EMPTY:
+		return -EINVAL;
 	default:
 		return -EIO;
 	}
