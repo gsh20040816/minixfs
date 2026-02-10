@@ -20,4 +20,5 @@ struct FileWriter
 	void setInodeWriter(InodeWriter &inodeWriter);
 	void setLayout(Layout &layout);
 	ErrorCode writeFile(Ino inodeNumber, const uint8_t *data, uint32_t offset, uint32_t sizeToWrite);
+	ErrorCode truncateFile(Ino inodeNumber, uint32_t newSize);
 };

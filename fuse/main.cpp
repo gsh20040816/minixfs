@@ -144,6 +144,26 @@ static int fs_create(const char *path, mode_t mode, fuse_file_info *fi)
 	return 0;
 }
 
+static int fs_truncate(const char *path, off_t size, fuse_file_info *fi)
+{
+	FS &fs = g_FileSystem;
+	if (fi != nullptr)
+	{
+		ErrorCode err = fs.truncateFile(fi->fh, static_cast<uint32_t>(size));
+		if (err != SUCCESS)
+		{
+			return errorCodeToInt(err);
+		}
+		return 0;
+	}
+	ErrorCode err = fs.truncateFile(path, static_cast<uint32_t>(size));
+	if (err != SUCCESS)
+	{
+		return errorCodeToInt(err);
+	}
+	return 0;
+}
+
 static int fs_readlink(const char *path, char *buf, size_t size)
 {
 	FS &fs = g_FileSystem;
@@ -188,6 +208,7 @@ static struct fuse_operations makeFsOperations()
 	ops.open = fs_open;
 	ops.read = fs_read;
 	ops.create = fs_create;
+	ops.truncate = fs_truncate;
 	ops.write = fs_write;
 	ops.readlink = fs_readlink;
 	ops.statfs = fs_statfs;

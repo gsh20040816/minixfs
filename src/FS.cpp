@@ -196,6 +196,22 @@ Ino FS::createFile(const std::string &path, const std::string &name, uint16_t mo
 	return newInodeNumber;
 }
 
+ErrorCode FS::truncateFile(const std::string &path, uint32_t newSize)
+{
+	ErrorCode err;
+	Ino inodeNumber = g_PathResolver.resolvePath(path, err);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	return truncateFile(inodeNumber, newSize);
+}
+
+ErrorCode FS::truncateFile(Ino inodeNumber, uint32_t newSize)
+{
+	return g_FileWriter.truncateFile(inodeNumber, newSize);
+}
+
 struct stat FS::getFileStat(const std::string &path, ErrorCode &outError)
 {
 	Ino inodeNumber = g_PathResolver.resolvePath(path, outError, MINIX3_ROOT_INODE, false);

@@ -118,3 +118,49 @@ ErrorCode FileWriter::writeFile(Ino inodeNumber, const uint8_t *data, uint32_t o
 	blockDevice->commitTransaction();
 	return SUCCESS;
 }
+
+ErrorCode FileWriter::truncateFile(Ino inodeNumber, uint32_t newSize)
+{
+	MinixInode3 inode = {};
+	ErrorCode err = inodeReader->readInode(inodeNumber, &inode);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	if (!inode.isRegularFile())
+	{
+		return ERROR_NOT_REGULAR_FILE;
+	}
+	if (newSize == inode.i_size)
+	{
+		return SUCCESS;
+	}
+	if (newSize > inode.i_size)
+	{
+		uint8_t *zeroBuffer = static_cast<uint8_t *>(calloc(1, newSize - inode.i_size));
+		if (zeroBuffer == nullptr)
+		{
+			return ERROR_CANNOT_ALLOCATE_MEMORY;
+		}
+		err = writeFile(inodeNumber, zeroBuffer, inode.i_size, newSize - inode.i_size);
+		free(zeroBuffer);
+		return err;
+	}
+	err = inodeWriter->writeInode(inodeNumber, &inode);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	Zno lastZoneIndex = (newSize - 1) / layout->zoneSize;
+	Zno oldLastZoneIndex = (inode.i_size - 1) / layout->zoneSize;
+	for (Zno zoneIndex = newSize == 0 ? 0 : lastZoneIndex + 1; zoneIndex <= oldLastZoneIndex; zoneIndex++)
+	{
+		err = fileMapper->freeLogicalZone(inode, zoneIndex);
+		if (err != SUCCESS)
+		{
+			return err;
+		}
+	}
+	inode.i_size = newSize;
+	return inodeWriter->writeInode(inodeNumber, &inode);
+}

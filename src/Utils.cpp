@@ -97,6 +97,8 @@ int errorCodeToInt(ErrorCode code)
 		return -ENAMETOOLONG;
 	case ERROR_FILE_NAME_EXISTS:
 		return -EEXIST;
+	case ERROR_FREE_ZONE_FAILED:
+		return -EIO;
 	default:
 		return -EIO;
 	}

@@ -32,7 +32,7 @@ void FileMapper::setZmapAllocator(Allocator &zmapAllocator)
 	this->zmapAllocator = &zmapAllocator;
 }
 
-ErrorCode FileMapper::mapLogicalToPhysical(MinixInode3 &inode, Zno logicalZoneIndex, Zno &outPhysicalZoneIndex, bool allocateIfNotMapped)
+ErrorCode FileMapper::mapLogicalToPhysical(MinixInode3 &inode, Zno logicalZoneIndex, Zno &outPhysicalZoneIndex, bool allocateIfNotMapped, bool freeIfMapped)
 {
 	if (blockDevice == nullptr || zonesPerIndirectBlock == 0 || blocksPerZone == 0)
 	{
@@ -70,6 +70,15 @@ ErrorCode FileMapper::mapLogicalToPhysical(MinixInode3 &inode, Zno logicalZoneIn
 				return err;
 			}
 			inode.i_zone[logicalZoneIndex] = newZone;
+		}
+		if (freeIfMapped && inode.i_zone[logicalZoneIndex] != 0)
+		{
+			ErrorCode err = zmapAllocator->freeBmap(inode.i_zone[logicalZoneIndex]);
+			if (err != SUCCESS)
+			{
+				return err;
+			}
+			inode.i_zone[logicalZoneIndex] = 0;
 		}
 		outPhysicalZoneIndex = inode.i_zone[logicalZoneIndex];
 		return SUCCESS;
@@ -115,6 +124,20 @@ ErrorCode FileMapper::mapLogicalToPhysical(MinixInode3 &inode, Zno logicalZoneIn
 			{
 				return err;
 			}
+			err = blockDevice->writeBlock(singleIndirectZone * blocksPerZone, &singleIndirectBlock);
+			if (err != SUCCESS)
+			{
+				return err;
+			}
+		}
+		if (freeIfMapped && singleIndirectBlock.zones[dataZoneIndex] != 0)
+		{
+			err = zmapAllocator->freeBmap(singleIndirectBlock.zones[dataZoneIndex]);
+			if (err != SUCCESS)
+			{
+				return err;
+			}
+			singleIndirectBlock.zones[dataZoneIndex] = 0;
 			err = blockDevice->writeBlock(singleIndirectZone * blocksPerZone, &singleIndirectBlock);
 			if (err != SUCCESS)
 			{
@@ -198,6 +221,20 @@ ErrorCode FileMapper::mapLogicalToPhysical(MinixInode3 &inode, Zno logicalZoneIn
 			{
 				return err;
 			}
+			err = blockDevice->writeBlock(doubleIndirectBlock.zones[singleIndirectZoneIndex] * blocksPerZone, &singleIndirectBlock);
+			if (err != SUCCESS)
+			{
+				return err;
+			}
+		}
+		if (freeIfMapped && singleIndirectBlock.zones[dataZoneIndex] != 0)
+		{
+			err = zmapAllocator->freeBmap(singleIndirectBlock.zones[dataZoneIndex]);
+			if (err != SUCCESS)
+			{
+				return err;
+			}
+			singleIndirectBlock.zones[dataZoneIndex] = 0;
 			err = blockDevice->writeBlock(doubleIndirectBlock.zones[singleIndirectZoneIndex] * blocksPerZone, &singleIndirectBlock);
 			if (err != SUCCESS)
 			{
@@ -328,8 +365,37 @@ ErrorCode FileMapper::mapLogicalToPhysical(MinixInode3 &inode, Zno logicalZoneIn
 				return SUCCESS;
 			}
 		}
+		if (freeIfMapped && singleIndirectBlock.zones[dataZoneIndex] != 0)
+		{
+			err = zmapAllocator->freeBmap(singleIndirectBlock.zones[dataZoneIndex]);
+			if (err != SUCCESS)
+			{
+				return err;
+			}
+			singleIndirectBlock.zones[dataZoneIndex] = 0;
+			err = blockDevice->writeBlock(doubleIndirectBlock.zones[singleIndirectZoneIndex] * blocksPerZone, &singleIndirectBlock);
+			if (err != SUCCESS)
+			{
+				return err;
+			}
+		}
 		outPhysicalZoneIndex = singleIndirectBlock.zones[dataZoneIndex];
 		return SUCCESS;
 	}
 	return ERROR_INVALID_FILE_OFFSET;
+}
+
+ErrorCode FileMapper::freeLogicalZone(MinixInode3 &inode, Zno logicalZoneIndex)
+{
+	Zno physicalZoneIndex;
+	ErrorCode err = mapLogicalToPhysical(inode, logicalZoneIndex, physicalZoneIndex, false, true);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	if (physicalZoneIndex == 0)
+	{
+		return SUCCESS;
+	}
+	return ERROR_FREE_ZONE_FAILED;
 }
