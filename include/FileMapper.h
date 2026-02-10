@@ -23,4 +23,5 @@ struct FileMapper
 	void setZmapAllocator(Allocator &zmapAllocator);
 	ErrorCode mapLogicalToPhysical(MinixInode3 &inode, Zno logicalZoneIndex, Zno &outPhysicalZoneIndex, bool allocateIfNotMapped = false, bool freeIfMapped = false);
 	ErrorCode freeLogicalZone(MinixInode3 &inode, Zno logicalZoneIndex);
+	bool isIndirectBlockEmpty(const IndirectBlock &block) const;
 };

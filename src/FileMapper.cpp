@@ -32,6 +32,18 @@ void FileMapper::setZmapAllocator(Allocator &zmapAllocator)
 	this->zmapAllocator = &zmapAllocator;
 }
 
+bool FileMapper::isIndirectBlockEmpty(const IndirectBlock &block) const
+{
+	for (uint32_t i = 0; i < zonesPerIndirectBlock; i++)
+	{
+		if (block.zones[i] != 0)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
 ErrorCode FileMapper::mapLogicalToPhysical(MinixInode3 &inode, Zno logicalZoneIndex, Zno &outPhysicalZoneIndex, bool allocateIfNotMapped, bool freeIfMapped)
 {
 	if (blockDevice == nullptr || zonesPerIndirectBlock == 0 || blocksPerZone == 0)
@@ -132,13 +144,26 @@ ErrorCode FileMapper::mapLogicalToPhysical(MinixInode3 &inode, Zno logicalZoneIn
 		}
 		if (freeIfMapped && singleIndirectBlock.zones[dataZoneIndex] != 0)
 		{
-			err = zmapAllocator->freeBmap(singleIndirectBlock.zones[dataZoneIndex]);
-			if (err != SUCCESS)
-			{
-				return err;
-			}
+			Zno oldDataZone = singleIndirectBlock.zones[dataZoneIndex];
 			singleIndirectBlock.zones[dataZoneIndex] = 0;
-			err = blockDevice->writeBlock(singleIndirectZone * blocksPerZone, &singleIndirectBlock);
+			if (isIndirectBlockEmpty(singleIndirectBlock))
+			{
+				inode.i_zone[MINIX3_SINGLE_INDIRECT_ZONE_INDEX + indirectZoneIndex] = 0;
+				err = zmapAllocator->freeBmap(singleIndirectZone);
+				if (err != SUCCESS)
+				{
+					return err;
+				}
+			}
+			else
+			{
+				err = blockDevice->writeBlock(singleIndirectZone * blocksPerZone, &singleIndirectBlock);
+				if (err != SUCCESS)
+				{
+					return err;
+				}
+			}
+			err = zmapAllocator->freeBmap(oldDataZone);
 			if (err != SUCCESS)
 			{
 				return err;
@@ -229,13 +254,44 @@ ErrorCode FileMapper::mapLogicalToPhysical(MinixInode3 &inode, Zno logicalZoneIn
 		}
 		if (freeIfMapped && singleIndirectBlock.zones[dataZoneIndex] != 0)
 		{
-			err = zmapAllocator->freeBmap(singleIndirectBlock.zones[dataZoneIndex]);
-			if (err != SUCCESS)
-			{
-				return err;
-			}
+			Zno oldDataZone = singleIndirectBlock.zones[dataZoneIndex];
 			singleIndirectBlock.zones[dataZoneIndex] = 0;
-			err = blockDevice->writeBlock(doubleIndirectBlock.zones[singleIndirectZoneIndex] * blocksPerZone, &singleIndirectBlock);
+			if (isIndirectBlockEmpty(singleIndirectBlock))
+			{
+				Zno oldSingleIndirectZone = doubleIndirectBlock.zones[singleIndirectZoneIndex];
+				doubleIndirectBlock.zones[singleIndirectZoneIndex] = 0;
+				if (isIndirectBlockEmpty(doubleIndirectBlock))
+				{
+					inode.i_zone[MINIX3_DOUBLE_INDIRECT_ZONE_INDEX + indirectZoneIndex] = 0;
+					err = zmapAllocator->freeBmap(doubleIndirectZone);
+					if (err != SUCCESS)
+					{
+						return err;
+					}
+				}
+				else
+				{
+					err = blockDevice->writeBlock(doubleIndirectZone * blocksPerZone, &doubleIndirectBlock);
+					if (err != SUCCESS)
+					{
+						return err;
+					}
+				}
+				err = zmapAllocator->freeBmap(oldSingleIndirectZone);
+				if (err != SUCCESS)
+				{
+					return err;
+				}
+			}
+			else
+			{
+				err = blockDevice->writeBlock(doubleIndirectBlock.zones[singleIndirectZoneIndex] * blocksPerZone, &singleIndirectBlock);
+				if (err != SUCCESS)
+				{
+					return err;
+				}
+			}
+			err = zmapAllocator->freeBmap(oldDataZone);
 			if (err != SUCCESS)
 			{
 				return err;
@@ -367,13 +423,62 @@ ErrorCode FileMapper::mapLogicalToPhysical(MinixInode3 &inode, Zno logicalZoneIn
 		}
 		if (freeIfMapped && singleIndirectBlock.zones[dataZoneIndex] != 0)
 		{
-			err = zmapAllocator->freeBmap(singleIndirectBlock.zones[dataZoneIndex]);
-			if (err != SUCCESS)
-			{
-				return err;
-			}
+			Zno oldDataZone = singleIndirectBlock.zones[dataZoneIndex];
 			singleIndirectBlock.zones[dataZoneIndex] = 0;
-			err = blockDevice->writeBlock(doubleIndirectBlock.zones[singleIndirectZoneIndex] * blocksPerZone, &singleIndirectBlock);
+			if (isIndirectBlockEmpty(singleIndirectBlock))
+			{
+				Zno oldSingleIndirectZone = doubleIndirectBlock.zones[singleIndirectZoneIndex];
+				doubleIndirectBlock.zones[singleIndirectZoneIndex] = 0;
+				if (isIndirectBlockEmpty(doubleIndirectBlock))
+				{
+					Zno oldDoubleIndirectZone = tripleIndirectBlock.zones[doubleIndirectZoneIndex];
+					tripleIndirectBlock.zones[doubleIndirectZoneIndex] = 0;
+					if (isIndirectBlockEmpty(tripleIndirectBlock))
+					{
+						inode.i_zone[MINIX3_TRIPLE_INDIRECT_ZONE_INDEX + indirectZoneIndex] = 0;
+						err = zmapAllocator->freeBmap(tripleIndirectZone);
+						if (err != SUCCESS)
+						{
+							return err;
+						}
+					}
+					else
+					{
+						err = blockDevice->writeBlock(tripleIndirectZone * blocksPerZone, &tripleIndirectBlock);
+						if (err != SUCCESS)
+						{
+							return err;
+						}
+					}
+					err = zmapAllocator->freeBmap(oldDoubleIndirectZone);
+					if (err != SUCCESS)
+					{
+						return err;
+					}
+				}
+				else
+				{
+					err = blockDevice->writeBlock(tripleIndirectBlock.zones[doubleIndirectZoneIndex] * blocksPerZone, &doubleIndirectBlock);
+					if (err != SUCCESS)
+					{
+						return err;
+					}
+				}
+				err = zmapAllocator->freeBmap(oldSingleIndirectZone);
+				if (err != SUCCESS)
+				{
+					return err;
+				}
+			}
+			else
+			{
+				err = blockDevice->writeBlock(doubleIndirectBlock.zones[singleIndirectZoneIndex] * blocksPerZone, &singleIndirectBlock);
+				if (err != SUCCESS)
+				{
+					return err;
+				}
+			}
+			err = zmapAllocator->freeBmap(oldDataZone);
 			if (err != SUCCESS)
 			{
 				return err;
