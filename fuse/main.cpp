@@ -111,6 +111,14 @@ static int fs_open(const char *path, fuse_file_info *fi)
 		return -EISDIR;
 	}
 	fi->fh = st.st_ino;
+	if (fi->flags & O_TRUNC)
+	{
+		err = g_FileSystem.truncateFile(fi->fh, 0);
+		if (err != SUCCESS)
+		{
+			return errorCodeToInt(err);
+		}
+	}
 	return 0;
 }
 
