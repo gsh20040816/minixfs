@@ -29,6 +29,18 @@ static int fs_getattr(const char *path, struct stat *st, fuse_file_info *fi)
 	return 0;
 }
 
+static int fs_flush(const char *path, fuse_file_info *fi)
+{
+	Logger::log(std::string("flush called for path: ") + path, LOG_DEBUG);
+	return 0;
+}
+
+static int fs_fsync(const char *path, int isdatasync, fuse_file_info *fi)
+{
+	Logger::log(std::string("fsync called for path: ") + path, LOG_DEBUG);
+	return 0;
+}
+
 static int fs_opendir(const char *path, fuse_file_info *fi)
 {
 	ErrorCode err;
@@ -119,6 +131,12 @@ static int fs_open(const char *path, fuse_file_info *fi)
 			return errorCodeToInt(err);
 		}
 	}
+	return 0;
+}
+
+static int fs_release(const char *path, fuse_file_info *fi)
+{
+	Logger::log(std::string("release called for path: ") + path, LOG_DEBUG);
 	return 0;
 }
 
@@ -228,6 +246,9 @@ static struct fuse_operations makeFsOperations()
 	ops.releasedir = fs_releasedir;
 	ops.fsyncdir = fs_fsyncdir;
 	ops.open = fs_open;
+	ops.release = fs_release;
+	ops.flush = fs_flush;
+	ops.fsync = fs_fsync;
 	ops.read = fs_read;
 	ops.create = fs_create;
 	ops.truncate = fs_truncate;
