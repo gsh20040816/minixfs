@@ -2,6 +2,7 @@
 #include "FS.h"
 #include "Utils.h"
 #include "Inode.h"
+#include "Logger.h"
 #include <fuse3/fuse.h>
 #include <sys/stat.h>
 #include <cstring>
@@ -11,11 +12,13 @@ FS g_FileSystem;
 static void *fs_init(fuse_conn_info *conn, fuse_config *cfg)
 {
 	cfg->kernel_cache = 1;
+	Logger::log("Filesystem initialized", LOG_INFO);
 	return nullptr;
 }
 
 static int fs_getattr(const char *path, struct stat *st, fuse_file_info *fi)
 {
+	Logger::log(std::string("getattr called for path: ") + path, LOG_DEBUG);
 	std::memset(st, 0, sizeof(struct stat));
 	ErrorCode err;
 	*st = g_FileSystem.getFileStat(path, err);
@@ -29,6 +32,7 @@ static int fs_getattr(const char *path, struct stat *st, fuse_file_info *fi)
 static int fs_opendir(const char *path, fuse_file_info *fi)
 {
 	ErrorCode err;
+	Logger::log(std::string("opendir called for path: ") + path, LOG_DEBUG);
 	struct stat st = g_FileSystem.getFileStat(path, err);
 	if (err != SUCCESS)
 	{
@@ -46,6 +50,7 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t
 {
 	ErrorCode err;
 	FS &fs = g_FileSystem;
+	Logger::log(std::string("readdir called for path: ") + path, LOG_DEBUG);
 	Ino inodeNumber = fi->fh;
 	int32_t totalEntries = fs.getDirectorySize(inodeNumber, err);
 	if (err != SUCCESS)
@@ -82,16 +87,19 @@ static int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t
 
 static int fs_releasedir(const char *path, fuse_file_info *fi)
 {
+	Logger::log(std::string("releasedir called for path: ") + path, LOG_DEBUG);
 	return 0;
 }
 
 static int fs_fsyncdir(const char *path, int isdatasync, fuse_file_info *fi)
 {
+	Logger::log(std::string("fsyncdir called for path: ") + path, LOG_DEBUG);
 	return 0;
 }
 
 static int fs_open(const char *path, fuse_file_info *fi)
 {
+	Logger::log(std::string("open called for path: ") + path, LOG_DEBUG);
 	ErrorCode err;
 	struct stat st = g_FileSystem.getFileStat(path, err);
 	if (err != SUCCESS)
@@ -108,6 +116,7 @@ static int fs_open(const char *path, fuse_file_info *fi)
 
 static int fs_read(const char *path, char *buf, size_t size, off_t offset, fuse_file_info *fi)
 {
+	Logger::log(std::string("read called for path: ") + path + ", size: " + std::to_string(size) + ", offset: " + std::to_string(offset), LOG_DEBUG);
 	FS &fs = g_FileSystem;
 	ErrorCode err;
 	uint32_t bytesRead = fs.readFile(fi->fh, reinterpret_cast<uint8_t*>(buf), static_cast<uint32_t>(offset), static_cast<uint32_t>(size), err);
@@ -120,6 +129,7 @@ static int fs_read(const char *path, char *buf, size_t size, off_t offset, fuse_
 
 static int fs_write(const char *path, const char *buf, size_t size, off_t offset, fuse_file_info *fi)
 {
+	Logger::log(std::string("write called for path: ") + path + ", size: " + std::to_string(size) + ", offset: " + std::to_string(offset), LOG_DEBUG);
 	FS &fs = g_FileSystem;
 	ErrorCode err;
 	uint32_t bytesWritten = fs.writeFile(fi->fh, reinterpret_cast<const uint8_t*>(buf), static_cast<uint32_t>(offset), static_cast<uint32_t>(size), err);
@@ -132,6 +142,7 @@ static int fs_write(const char *path, const char *buf, size_t size, off_t offset
 
 static int fs_create(const char *path, mode_t mode, fuse_file_info *fi)
 {
+	Logger::log(std::string("create called for path: ") + path, LOG_DEBUG);
 	FS &fs = g_FileSystem;
 	ErrorCode err;
 	auto [parentPath, name] = splitPathIntoDirAndBase(path);
@@ -146,6 +157,7 @@ static int fs_create(const char *path, mode_t mode, fuse_file_info *fi)
 
 static int fs_truncate(const char *path, off_t size, fuse_file_info *fi)
 {
+	Logger::log(std::string("truncate called for path: ") + path + ", size: " + std::to_string(size), LOG_DEBUG);
 	FS &fs = g_FileSystem;
 	if (fi != nullptr)
 	{
@@ -166,6 +178,7 @@ static int fs_truncate(const char *path, off_t size, fuse_file_info *fi)
 
 static int fs_readlink(const char *path, char *buf, size_t size)
 {
+	Logger::log(std::string("readlink called for path: ") + path, LOG_DEBUG);
 	FS &fs = g_FileSystem;
 	ErrorCode err;
 	if (size == 0)
@@ -185,6 +198,7 @@ static int fs_readlink(const char *path, char *buf, size_t size)
 
 static int fs_statfs(const char *path, struct statvfs *st)
 {
+	Logger::log(std::string("statfs called for path: ") + path, LOG_DEBUG);
 	FS &fs = g_FileSystem;
 	ErrorCode err;
 	struct statvfs fsStat = fs.getFSStat(err);
@@ -238,6 +252,7 @@ static void showHelp()
 
 int main(int argc, char **argv)
 {
+	Logger::log("Starting filesystem", LOG_INFO);
 	FS &fs = g_FileSystem;
 	MountOptions options;
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);

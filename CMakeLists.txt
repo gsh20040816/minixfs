@@ -23,7 +23,10 @@ target_link_libraries(minixfs-cli PRIVATE libminixfs)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(FUSE3 REQUIRED fuse3)
 
-add_executable(minixfs-fuse fuse/main.cpp)
+add_executable(minixfs-fuse
+    fuse/main.cpp
+    fuse/Logger.cpp
+)
 target_include_directories(minixfs-fuse
     PRIVATE
         ${FUSE3_INCLUDE_DIRS}
@@ -40,6 +43,11 @@ target_link_libraries(minixfs-fuse
 target_compile_options(minixfs-fuse
     PRIVATE
         ${FUSE3_CFLAGS_OTHER}
+)
+target_compile_definitions(minixfs-fuse
+    PRIVATE
+        $<$<CONFIG:Debug>:MINIXFS_LOG_MIN_LEVEL=0>
+        $<$<NOT:$<CONFIG:Debug>>:MINIXFS_LOG_MIN_LEVEL=1>
 )
 
 include(CTest)
