@@ -127,10 +127,6 @@ ErrorCode FileWriter::truncateFile(Ino inodeNumber, uint32_t newSize)
 	{
 		return err;
 	}
-	if (!inode.isRegularFile())
-	{
-		return ERROR_NOT_REGULAR_FILE;
-	}
 	if (newSize == inode.i_size)
 	{
 		return SUCCESS;

@@ -112,31 +112,35 @@ static int fs_fsyncdir(const char *path, int isdatasync, fuse_file_info *fi)
 static int fs_open(const char *path, fuse_file_info *fi)
 {
 	Logger::log(std::string("open called for path: ") + path, LOG_DEBUG);
-	ErrorCode err;
-	struct stat st = g_FileSystem.getFileStat(path, err);
+	Ino inodeNumber;
+	ErrorCode err = g_FileSystem.openFile(path, inodeNumber, fi->flags);
 	if (err != SUCCESS)
 	{
 		return errorCodeToInt(err);
 	}
-	if (!S_ISREG(st.st_mode))
-	{
-		return -EISDIR;
-	}
-	fi->fh = st.st_ino;
-	if (fi->flags & O_TRUNC)
-	{
-		err = g_FileSystem.truncateFile(fi->fh, 0);
-		if (err != SUCCESS)
-		{
-			return errorCodeToInt(err);
-		}
-	}
+	fi->fh = inodeNumber;
 	return 0;
 }
 
 static int fs_release(const char *path, fuse_file_info *fi)
 {
 	Logger::log(std::string("release called for path: ") + path, LOG_DEBUG);
+	ErrorCode err = g_FileSystem.closeFile(fi->fh);
+	if (err != SUCCESS)
+	{
+		return errorCodeToInt(err);
+	}
+	return 0;
+}
+
+static int fs_unlink(const char *path)
+{
+	Logger::log(std::string("unlink called for path: ") + path, LOG_DEBUG);
+	ErrorCode err = g_FileSystem.unlinkFile(path);
+	if (err != SUCCESS)
+	{
+		return errorCodeToInt(err);
+	}
 	return 0;
 }
 
@@ -173,6 +177,11 @@ static int fs_create(const char *path, mode_t mode, fuse_file_info *fi)
 	ErrorCode err;
 	auto [parentPath, name] = splitPathIntoDirAndBase(path);
 	Ino newInodeNumber = fs.createFile(parentPath, name, mode, fuse_get_context()->uid, fuse_get_context()->gid, err);
+	if (err != SUCCESS)
+	{
+		return errorCodeToInt(err);
+	}
+	err = fs.openFile(path, newInodeNumber, O_RDWR);
 	if (err != SUCCESS)
 	{
 		return errorCodeToInt(err);
@@ -253,6 +262,7 @@ static struct fuse_operations makeFsOperations()
 	ops.create = fs_create;
 	ops.truncate = fs_truncate;
 	ops.write = fs_write;
+	ops.unlink = fs_unlink;
 	ops.readlink = fs_readlink;
 	ops.statfs = fs_statfs;
 	return ops;

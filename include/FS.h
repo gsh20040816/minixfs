@@ -12,6 +12,8 @@
 #include "FileWriter.h"
 #include "FileCreator.h"
 #include "FileMapper.h"
+#include "FileCounter.h"
+#include "FileDeleter.h"
 #include "DirReader.h"
 #include "DirWriter.h"
 #include "PathResolver.h"
@@ -41,6 +43,8 @@ private:
 	PathResolver g_PathResolver;
 	Allocator g_imapAllocator;
 	Allocator g_zmapAllocator;
+	FileCounter g_FileCounter;
+	FileDeleter g_FileDeleter;
 public:
 	FS();
 	FS(const std::string &devicePath);
@@ -61,6 +65,9 @@ public:
 	struct stat getFileStat(const std::string &path, ErrorCode &outError);
 	std::string readLink(const std::string &path, ErrorCode &outError);
 	struct statvfs getFSStat(ErrorCode &outError);
+	ErrorCode openFile(const std::string &path, Ino &outInodeNumber, uint32_t flags);
+	ErrorCode closeFile(Ino inodeNumber);
+	ErrorCode unlinkFile(const std::string &path);
 	Ino createFile(const std::string &path, const std::string &name, uint16_t mode, uint16_t uid, uint16_t gid, ErrorCode &outError);
 	ErrorCode truncateFile(const std::string &path, uint32_t newSize);
 	ErrorCode truncateFile(Ino inodeNumber, uint32_t newSize);

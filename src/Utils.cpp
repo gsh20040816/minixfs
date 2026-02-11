@@ -99,6 +99,8 @@ int errorCodeToInt(ErrorCode code)
 		return -EEXIST;
 	case ERROR_FREE_ZONE_FAILED:
 		return -EIO;
+	case ERROR_UNLINK_DIRECTORY:
+		return -EISDIR;
 	default:
 		return -EIO;
 	}

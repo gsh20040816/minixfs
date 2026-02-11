@@ -5,6 +5,7 @@
 #include "IndirectBlock.h"
 #include "DirEntry.h"
 #include <cstring>
+#include <fcntl.h>
 
 FS::FS(): g_BlockDevice(), g_Superblock() {}
 
@@ -84,6 +85,9 @@ ErrorCode FS::mount()
 	g_PathResolver.setInodeReader(g_InodeReader);
 	g_PathResolver.setDirReader(g_DirReader);
 	g_PathResolver.setLinkReader(g_LinkReader);
+
+	g_FileDeleter.setImapAllocator(g_imapAllocator);
+	g_FileDeleter.setFileWriter(g_FileWriter);
 
 	g_imapAllocator.setBlockDevice(bd);
 	err = g_imapAllocator.init(layout.imapStart, layout.totalInodes + 1, 1, layout.blockSize);
@@ -209,7 +213,110 @@ ErrorCode FS::truncateFile(const std::string &path, uint32_t newSize)
 
 ErrorCode FS::truncateFile(Ino inodeNumber, uint32_t newSize)
 {
+	MinixInode3 inode;
+	ErrorCode err = g_InodeReader.readInode(inodeNumber, &inode);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	if (!inode.isRegularFile())
+	{
+		return ERROR_NOT_REGULAR_FILE;
+	}
 	return g_FileWriter.truncateFile(inodeNumber, newSize);
+}
+
+ErrorCode FS::openFile(const std::string &path, Ino &outInodeNumber, uint32_t flags)
+{
+	ErrorCode err;
+	outInodeNumber = g_PathResolver.resolvePath(path, err);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	MinixInode3 inode;
+	err = g_InodeReader.readInode(outInodeNumber, &inode);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	if (!inode.isRegularFile())
+	{
+		return ERROR_NOT_REGULAR_FILE;
+	}
+	if (flags & O_TRUNC)
+	{
+		err = g_FileWriter.truncateFile(outInodeNumber, 0);
+		if (err != SUCCESS)
+		{
+			return err;
+		}
+	}
+	g_FileCounter.add(outInodeNumber);
+	return SUCCESS;
+}
+
+ErrorCode FS::closeFile(Ino inodeNumber)
+{
+	g_FileCounter.remove(inodeNumber);
+	MinixInode3 inode;
+	ErrorCode err = g_InodeReader.readInode(inodeNumber, &inode);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	if (inode.i_nlinks == 0 && g_FileCounter.empty(inodeNumber))
+	{
+		return g_FileDeleter.deleteFile(inodeNumber);
+	}
+	return SUCCESS;
+}
+
+ErrorCode FS::unlinkFile(const std::string &path)
+{
+	ErrorCode err;
+	Ino inodeNumber = g_PathResolver.resolvePath(path, err, MINIX3_ROOT_INODE, false);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	auto [parentPath, name] = splitPathIntoDirAndBase(path);
+	Ino parentInodeNumber = g_PathResolver.resolvePath(parentPath, err);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	uint32_t idx = g_PathResolver.getIdxFromParentAndName(parentInodeNumber, name, err);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	MinixInode3 inode;
+	err = g_InodeReader.readInode(inodeNumber, &inode);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	if (inode.isDirectory())
+	{
+		return ERROR_UNLINK_DIRECTORY;
+	}
+	err = g_DirWriter.removeDirEntry(parentInodeNumber, idx);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	inode.i_nlinks--;
+	err = g_InodeWriter.writeInode(inodeNumber, &inode);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	if (inode.i_nlinks == 0 && g_FileCounter.empty(inodeNumber))
+	{
+		return g_FileDeleter.deleteFile(inodeNumber);
+	}
+	return SUCCESS;
 }
 
 struct stat FS::getFileStat(const std::string &path, ErrorCode &outError)

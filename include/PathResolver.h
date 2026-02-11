@@ -14,5 +14,6 @@ struct PathResolver
 	void setDirReader(DirReader &dirReader);
 	void setLinkReader(LinkReader &linkReader);
 	Ino getInodeFromParentAndName(Ino parentInodeNumber, const std::string &name, ErrorCode &outError);
+	uint32_t getIdxFromParentAndName(Ino parentInodeNumber, const std::string &name, ErrorCode &outError);
 	Ino resolvePath(const std::string &path, ErrorCode &outError, Ino currentInode = MINIX3_ROOT_INODE, bool resolveLastLink = true);
 };
