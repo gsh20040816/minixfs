@@ -88,6 +88,11 @@ ErrorCode FS::mount()
 
 	g_FileDeleter.setImapAllocator(g_imapAllocator);
 	g_FileDeleter.setFileWriter(g_FileWriter);
+	g_FileDeleter.setFileCounter(g_FileCounter);
+	g_FileDeleter.setDirReader(g_DirReader);
+	g_FileDeleter.setDirWriter(g_DirWriter);
+	g_FileDeleter.setInodeReader(g_InodeReader);
+	g_FileDeleter.setInodeWriter(g_InodeWriter);
 
 	g_imapAllocator.setBlockDevice(bd);
 	err = g_imapAllocator.init(layout.imapStart, layout.totalInodes + 1, 1, layout.blockSize);
@@ -275,11 +280,6 @@ ErrorCode FS::closeFile(Ino inodeNumber)
 ErrorCode FS::unlinkFile(const std::string &path)
 {
 	ErrorCode err;
-	Ino inodeNumber = g_PathResolver.resolvePath(path, err, MINIX3_ROOT_INODE, false);
-	if (err != SUCCESS)
-	{
-		return err;
-	}
 	auto [parentPath, name] = splitPathIntoDirAndBase(path);
 	Ino parentInodeNumber = g_PathResolver.resolvePath(parentPath, err);
 	if (err != SUCCESS)
@@ -287,6 +287,11 @@ ErrorCode FS::unlinkFile(const std::string &path)
 		return err;
 	}
 	uint32_t idx = g_PathResolver.getIdxFromParentAndName(parentInodeNumber, name, err);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	Ino inodeNumber = g_PathResolver.resolvePath(path, err, MINIX3_ROOT_INODE, false);
 	if (err != SUCCESS)
 	{
 		return err;
@@ -301,22 +306,7 @@ ErrorCode FS::unlinkFile(const std::string &path)
 	{
 		return ERROR_UNLINK_DIRECTORY;
 	}
-	err = g_DirWriter.removeDirEntry(parentInodeNumber, idx);
-	if (err != SUCCESS)
-	{
-		return err;
-	}
-	inode.i_nlinks--;
-	err = g_InodeWriter.writeInode(inodeNumber, &inode);
-	if (err != SUCCESS)
-	{
-		return err;
-	}
-	if (inode.i_nlinks == 0 && g_FileCounter.empty(inodeNumber))
-	{
-		return g_FileDeleter.deleteFile(inodeNumber);
-	}
-	return SUCCESS;
+	return g_FileDeleter.unlinkFile(parentInodeNumber, idx);
 }
 
 struct stat FS::getFileStat(const std::string &path, ErrorCode &outError)
