@@ -94,6 +94,13 @@ ErrorCode FS::mount()
 	g_FileDeleter.setInodeReader(g_InodeReader);
 	g_FileDeleter.setInodeWriter(g_InodeWriter);
 
+	g_FileRenamer.setDirReader(g_DirReader);
+	g_FileRenamer.setDirWriter(g_DirWriter);
+	g_FileRenamer.setInodeReader(g_InodeReader);
+	g_FileRenamer.setInodeWriter(g_InodeWriter);
+	g_FileRenamer.setFileDeleter(g_FileDeleter);
+	g_FileRenamer.setPathResolver(g_PathResolver);
+
 	g_imapAllocator.setBlockDevice(bd);
 	err = g_imapAllocator.init(layout.imapStart, layout.totalInodes + 1, 1, layout.blockSize);
 	if (err != SUCCESS)
@@ -237,6 +244,24 @@ ErrorCode FS::truncateFile(Ino inodeNumber, uint32_t newSize)
 		return ERROR_NOT_REGULAR_FILE;
 	}
 	return g_FileWriter.truncateFile(inodeNumber, newSize);
+}
+
+ErrorCode FS::renameFile(const std::string &from, const std::string &to, bool failIfDstExists)
+{
+	auto [srcParentPath, srcName] = splitPathIntoDirAndBase(from);
+	auto [dstParentPath, dstName] = splitPathIntoDirAndBase(to);
+	ErrorCode err;
+	Ino srcParentInodeNumber = g_PathResolver.resolvePath(srcParentPath, err);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	Ino dstParentInodeNumber = g_PathResolver.resolvePath(dstParentPath, err);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	return g_FileRenamer.rename(srcParentInodeNumber, srcName, dstParentInodeNumber, dstName, failIfDstExists);
 }
 
 ErrorCode FS::openFile(const std::string &path, Ino &outInodeNumber, uint32_t flags)

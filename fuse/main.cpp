@@ -190,6 +190,22 @@ static int fs_create(const char *path, mode_t mode, fuse_file_info *fi)
 	return 0;
 }
 
+static int fs_rename(const char *from, const char *to, unsigned int flags)
+{
+	Logger::log(std::string("rename called from path: ") + from + " to path: " + to, LOG_DEBUG);
+	FS &fs = g_FileSystem;
+	if (flags & (RENAME_EXCHANGE | RENAME_WHITEOUT))
+	{
+		return -EINVAL;
+	}
+	ErrorCode err = fs.renameFile(from, to, (flags & RENAME_NOREPLACE) != 0);
+	if (err != SUCCESS)
+	{
+		return errorCodeToInt(err);
+	}
+	return 0;
+}
+
 static int fs_truncate(const char *path, off_t size, fuse_file_info *fi)
 {
 	Logger::log(std::string("truncate called for path: ") + path + ", size: " + std::to_string(size), LOG_DEBUG);
@@ -261,6 +277,7 @@ static struct fuse_operations makeFsOperations()
 	ops.read = fs_read;
 	ops.create = fs_create;
 	ops.truncate = fs_truncate;
+	ops.rename = fs_rename;
 	ops.write = fs_write;
 	ops.unlink = fs_unlink;
 	ops.readlink = fs_readlink;
