@@ -119,7 +119,15 @@ ErrorCode FS::unmount()
 	ErrorCode err = SUCCESS;
 	ErrorCode imapErr = g_imapAllocator.sync();
 	ErrorCode zmapErr = g_zmapAllocator.sync();
-	return (err != SUCCESS) ? err : ((imapErr != SUCCESS) ? imapErr : ((zmapErr != SUCCESS) ? zmapErr : g_BlockDevice.close()));
+	if (imapErr != SUCCESS)
+	{
+		return imapErr;
+	}
+	if (zmapErr != SUCCESS)
+	{
+		return zmapErr;
+	}
+	return g_BlockDevice.close();
 }
 
 uint16_t FS::getBlockSize() const
