@@ -84,6 +84,18 @@ ErrorCode FileRenamer::rename(Ino srcParentInodeNumber, const std::string &srcNa
 	{
 		return err;
 	}
+	if (srcInode.isDirectory())
+	{
+		bool isDstSubdirOfSrc = pathResolver->twoInodesAreAncestor(srcInodeNumber, dstParentInodeNumber, err);
+		if (err != SUCCESS)
+		{
+			return err;
+		}
+		if (isDstSubdirOfSrc)
+		{
+			return ERROR_DIRECTORY_NOT_EMPTY;
+		}
+	}
 	if (dstExists)
 	{
 		std::vector<DirEntry> dstEntries = dirReader->readDir(dstParentInodeNumber, dstEntryIndex, 1, err);
@@ -127,7 +139,7 @@ ErrorCode FileRenamer::rename(Ino srcParentInodeNumber, const std::string &srcNa
 			}
 		}
 	}
-	if (dstName.length() > MINIX3_DIR_NAME_MAX)
+	if (dstName.length() > MINIX3_DIR_NAME_MAX || dstName.empty())
 	{
 		return ERROR_NAME_LENGTH_EXCEEDED;
 	}

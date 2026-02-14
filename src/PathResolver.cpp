@@ -218,3 +218,48 @@ Ino PathResolver::resolvePath(const std::string &path, ErrorCode &outError, Ino 
 	}
 	return currentInode;
 }
+
+bool PathResolver::twoInodesAreAncestor(Ino ancestorInodeNumber, Ino descendantInodeNumber, ErrorCode &outError)
+{
+	if (ancestorInodeNumber == 0 || descendantInodeNumber == 0)
+	{
+		outError = ERROR_INVALID_INODE_NUMBER;
+		return false;
+	}
+	while (descendantInodeNumber != 1)
+	{
+		if (descendantInodeNumber == ancestorInodeNumber)
+		{
+			outError = SUCCESS;
+			return true;
+		}
+		MinixInode3 descendantInode;
+		ErrorCode err = inodeReader->readInode(descendantInodeNumber, &descendantInode);
+		if (err != SUCCESS)
+		{
+			outError = err;
+			return false;
+		}
+		if (!descendantInode.isDirectory())
+		{
+			outError = ERROR_NOT_DIRECTORY;
+			return false;
+		}
+		uint32_t fatherIndex = getIdxFromParentAndName(descendantInodeNumber, "..", err);
+		if (err != SUCCESS)
+		{
+			outError = err;
+			return false;
+		}
+		DirEntryOnDisk fatherEntry;
+		err = dirReader->readDirRaw(descendantInodeNumber, reinterpret_cast<uint8_t*>(&fatherEntry), sizeof(DirEntryOnDisk), fatherIndex * sizeof(DirEntryOnDisk));
+		if (err != SUCCESS)
+		{
+			outError = err;
+			return false;
+		}
+		descendantInodeNumber = fatherEntry.d_inode;
+	}
+	outError = SUCCESS;
+	return false;
+}
