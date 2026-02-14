@@ -135,6 +135,16 @@ if [[ "$(cat "${REAL_TARGET}")" != "${HELLO_EXPECTED_CONTENT}" ]]; then
     exit 1
 fi
 
+MISSING_PARENT_TARGET="${FUSE_MNT}/not_exists_parent/src_dir"
+if mkdir "${MISSING_PARENT_TARGET}" 2>/dev/null; then
+    echo "FAIL: mkdir should fail when parent directory does not exist" >&2
+    exit 1
+fi
+if [[ -e "${FUSE_MNT}/not_exists_parent" ]]; then
+    echo "FAIL: mkdir with missing parent should not create intermediate directory" >&2
+    exit 1
+fi
+
 TRUNC_TARGET="${FUSE_MNT}/open_trunc_case.txt"
 printf "ABCDEFG" > "${TRUNC_TARGET}"
 exec 3>"${TRUNC_TARGET}"
