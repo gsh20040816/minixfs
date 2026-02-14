@@ -94,12 +94,18 @@ ErrorCode FS::mount()
 	g_FileDeleter.setInodeReader(g_InodeReader);
 	g_FileDeleter.setInodeWriter(g_InodeWriter);
 
+	g_FileLinker.setInodeReader(g_InodeReader);
+	g_FileLinker.setInodeWriter(g_InodeWriter);
+	g_FileLinker.setDirWriter(g_DirWriter);
+	g_FileLinker.setPathResolver(g_PathResolver);
+
 	g_FileRenamer.setDirReader(g_DirReader);
 	g_FileRenamer.setDirWriter(g_DirWriter);
 	g_FileRenamer.setInodeReader(g_InodeReader);
 	g_FileRenamer.setInodeWriter(g_InodeWriter);
 	g_FileRenamer.setFileDeleter(g_FileDeleter);
 	g_FileRenamer.setPathResolver(g_PathResolver);
+	g_FileRenamer.setFileLinker(g_FileLinker);
 
 	g_imapAllocator.setBlockDevice(bd);
 	err = g_imapAllocator.init(layout.imapStart, layout.totalInodes + 1, 1, layout.blockSize);

@@ -1,6 +1,7 @@
 #include "DirReader.h"
 #include "Inode.h"
 #include <cstring>
+#include "Utils.h"
 
 void DirReader::setInodeReader(InodeReader &inodeReader)
 {
@@ -108,4 +109,47 @@ std::vector<DirEntry> DirReader::readDir(Ino dirInodeNumber, uint32_t offset, ui
 	free(dirData);
 	outError = SUCCESS;
 	return entries;
+}
+
+bool DirReader::isDirEmpty(Ino dirInodeNumber, ErrorCode &outError)
+{
+	MinixInode3 dirInode;
+	ErrorCode err = inodeReader->readInode(dirInodeNumber, &dirInode);
+	if (err != SUCCESS)
+	{
+		outError = err;
+		return false;
+	}
+	if (!dirInode.isDirectory())
+	{
+		outError = ERROR_NOT_DIRECTORY;
+		return false;
+	}
+	uint32_t dirSize = dirInode.i_size;
+	if (dirSize % sizeof(DirEntryOnDisk) != 0)
+	{
+		outError = ERROR_FS_BROKEN;
+		return false;
+	}
+	uint32_t totalEntries = dirSize / sizeof(DirEntryOnDisk);
+	std::vector<DirEntry> entries = readDir(dirInodeNumber, 0, totalEntries, err, true);
+	if (err != SUCCESS)
+	{
+		outError = err;
+		return false;
+	}
+	for (const DirEntry &entry : entries)
+	{
+		if (entry.raw.d_inode != 0)
+		{
+			std::string name = char60ToString(entry.raw.d_name);
+			if (name != "." && name != "..")
+			{
+				outError = SUCCESS;
+				return false;
+			}
+		}
+	}
+	outError = SUCCESS;
+	return true;
 }

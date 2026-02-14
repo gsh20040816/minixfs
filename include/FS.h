@@ -46,6 +46,7 @@ private:
 	Allocator g_zmapAllocator;
 	FileCounter g_FileCounter;
 	FileDeleter g_FileDeleter;
+	FileLinker g_FileLinker;
 	FileRenamer g_FileRenamer;
 public:
 	FS();

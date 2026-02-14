@@ -101,6 +101,8 @@ int errorCodeToInt(ErrorCode code)
 		return -EIO;
 	case ERROR_UNLINK_DIRECTORY:
 		return -EISDIR;
+	case ERROR_DIRECTORY_NOT_EMPTY:
+		return -ENOTEMPTY;
 	default:
 		return -EIO;
 	}

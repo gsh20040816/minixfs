@@ -30,6 +30,11 @@ void FileRenamer::setPathResolver(PathResolver &pathResolver)
 	this->pathResolver = &pathResolver;
 }
 
+void FileRenamer::setFileLinker(FileLinker &fileLinker)
+{
+	this->fileLinker = &fileLinker;
+}
+
 ErrorCode FileRenamer::rename(Ino srcParentInodeNumber, const std::string &srcName, Ino dstParentInodeNumber, const std::string &dstName, bool failIfDstExists)
 {
 	MinixInode3 srcParentInode, dstParentInode;
@@ -73,6 +78,12 @@ ErrorCode FileRenamer::rename(Ino srcParentInodeNumber, const std::string &srcNa
 	}
 	DirEntry &srcEntry = srcEntries[0];
 	Ino srcInodeNumber = srcEntry.raw.d_inode;
+	MinixInode3 srcInode;
+	err = inodeReader->readInode(srcInodeNumber, &srcInode);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
 	if (dstExists)
 	{
 		std::vector<DirEntry> dstEntries = dirReader->readDir(dstParentInodeNumber, dstEntryIndex, 1, err);
@@ -89,18 +100,60 @@ ErrorCode FileRenamer::rename(Ino srcParentInodeNumber, const std::string &srcNa
 		{
 			return SUCCESS;
 		}
+		MinixInode3 dstInode;
+		err = inodeReader->readInode(dstEntry.raw.d_inode, &dstInode);
+		if (err != SUCCESS)
+		{
+			return err;
+		}
+		if (!srcInode.isDirectory() && dstInode.isDirectory())
+		{
+			return ERROR_NOT_REGULAR_FILE;
+		}
+		if (srcInode.isDirectory() && !dstInode.isDirectory())
+		{
+			return ERROR_NOT_DIRECTORY;
+		}
+		if (srcInode.isDirectory())
+		{
+			bool dstDirEmpty = dirReader->isDirEmpty(dstEntry.raw.d_inode, err);
+			if (err != SUCCESS)
+			{
+				return err;
+			}
+			if (!dstDirEmpty)
+			{
+				return ERROR_DIRECTORY_NOT_EMPTY;
+			}
+		}
 	}
-	MinixInode3 srcInode;
-	err = inodeReader->readInode(srcInodeNumber, &srcInode);
-	if (err != SUCCESS)
+	if (dstName.length() > MINIX3_DIR_NAME_MAX)
 	{
-		return err;
+		return ERROR_NAME_LENGTH_EXCEEDED;
 	}
 	srcInode.i_nlinks++;
 	err = inodeWriter->writeInode(srcInodeNumber, &srcInode);
 	if (err != SUCCESS)
 	{
 		return err;
+	}
+	if (srcInode.isDirectory())
+	{
+		uint32_t oldParentEntryIndex = pathResolver->getIdxFromParentAndName(srcInodeNumber, "..", err);
+		if (err != SUCCESS)
+		{
+			return err;
+		}
+		err = fileDeleter->unlinkFile(srcInodeNumber, oldParentEntryIndex);
+		if (err != SUCCESS)
+		{
+			return err;
+		}
+		err = fileLinker->linkFile(srcInodeNumber, "..", dstParentInodeNumber);
+		if (err != SUCCESS)
+		{
+			return err;
+		}
 	}
 	if (dstExists)
 	{
