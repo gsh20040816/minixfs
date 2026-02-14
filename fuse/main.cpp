@@ -261,6 +261,18 @@ static int fs_statfs(const char *path, struct statvfs *st)
 	return 0;
 }
 
+static int fs_mkdir(const char *path, mode_t mode)
+{
+	Logger::log(std::string("mkdir called for path: ") + path, LOG_DEBUG);
+	FS &fs = g_FileSystem;
+	ErrorCode err = fs.mkdir(path, mode, fuse_get_context()->uid, fuse_get_context()->gid);
+	if (err != SUCCESS)
+	{
+		return errorCodeToInt(err);
+	}
+	return 0;
+}
+
 static struct fuse_operations makeFsOperations()
 {
 	struct fuse_operations ops = {};
@@ -282,6 +294,7 @@ static struct fuse_operations makeFsOperations()
 	ops.unlink = fs_unlink;
 	ops.readlink = fs_readlink;
 	ops.statfs = fs_statfs;
+	ops.mkdir = fs_mkdir;
 	return ops;
 }
 

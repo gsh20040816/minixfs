@@ -354,6 +354,18 @@ ErrorCode FS::unlinkFile(const std::string &path)
 	return g_FileDeleter.unlinkFile(parentInodeNumber, idx);
 }
 
+ErrorCode FS::mkdir(const std::string &path, uint16_t mode, uint16_t uid, uint16_t gid)
+{
+	auto [parentPath, name] = splitPathIntoDirAndBase(path);
+	ErrorCode err;
+	Ino parentInodeNumber = g_PathResolver.resolvePath(parentPath, err);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	return g_DirCreator.createDir(parentInodeNumber, name, mode, uid, gid);
+}
+
 struct stat FS::getFileStat(const std::string &path, ErrorCode &outError)
 {
 	Ino inodeNumber = g_PathResolver.resolvePath(path, outError, MINIX3_ROOT_INODE, false);
