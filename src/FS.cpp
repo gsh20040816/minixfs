@@ -107,6 +107,12 @@ ErrorCode FS::mount()
 	g_FileRenamer.setPathResolver(g_PathResolver);
 	g_FileRenamer.setFileLinker(g_FileLinker);
 
+	g_DirCreator.setInodeReader(g_InodeReader);
+	g_DirCreator.setInodeWriter(g_InodeWriter);
+	g_DirCreator.setPathResolver(g_PathResolver);
+	g_DirCreator.setFileCreator(g_FileCreator);
+	g_DirCreator.setFileLinker(g_FileLinker);
+
 	g_imapAllocator.setBlockDevice(bd);
 	err = g_imapAllocator.init(layout.imapStart, layout.totalInodes + 1, 1, layout.blockSize);
 	if (err != SUCCESS)
