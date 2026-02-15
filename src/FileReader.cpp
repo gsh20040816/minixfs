@@ -19,13 +19,13 @@ void FileReader::setFileMapper(FileMapper &fileMapper)
 
 ErrorCode FileReader::readFile(const MinixInode3 &inode, uint8_t *buffer, uint32_t sizeToRead, uint32_t offset)
 {
-	if (offset >= inode.i_size)
-	{
-		return ERROR_INVALID_FILE_OFFSET;
-	}
 	if (sizeToRead == 0)
 	{
 		return SUCCESS;
+	}
+	if (offset >= inode.i_size)
+	{
+		return ERROR_INVALID_FILE_OFFSET;
 	}
 	if (offset + sizeToRead > inode.i_size)
 	{
