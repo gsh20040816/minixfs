@@ -375,6 +375,10 @@ ErrorCode FS::mkdir(const std::string &path, uint16_t mode, uint16_t uid, uint16
 
 ErrorCode FS::rmdir(const std::string &path)
 {
+	if (path == "/")
+	{
+		return ERROR_DELETE_ROOT_DIR;
+	}
 	auto [parentPath, name] = splitPathIntoDirAndBase(path);
 	ErrorCode err;
 	Ino parentInodeNumber = g_PathResolver.resolvePath(parentPath, err);
