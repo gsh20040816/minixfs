@@ -123,4 +123,16 @@ if(BUILD_TESTING)
         SKIP_RETURN_CODE 77
         TIMEOUT 180
     )
+
+    add_test(
+        NAME minixfs_attr_behavior
+        COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/minixfs_attr_behavior.sh
+                $<TARGET_FILE:minixfs-fuse>
+                ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures_write
+                ${CMAKE_CURRENT_BINARY_DIR}/ctest/minixfs_attr_behavior
+    )
+    set_tests_properties(minixfs_attr_behavior PROPERTIES
+        SKIP_RETURN_CODE 77
+        TIMEOUT 180
+    )
 endif()

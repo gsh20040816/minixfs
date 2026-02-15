@@ -6,6 +6,7 @@
 #include <fuse3/fuse.h>
 #include <sys/stat.h>
 #include <cstring>
+#include <ctime>
 
 FS g_FileSystem;
 
@@ -334,7 +335,7 @@ static int fs_utimens(const char *path, const struct timespec tv[2], fuse_file_i
 {
 	Logger::log(std::string("utimens called for path: ") + path, LOG_DEBUG);
 	FS &fs = g_FileSystem;
-	uint32_t newTimes[2];
+	uint32_t newTimes[2] = {0, 0};
 	uint32_t &atime = newTimes[0];
 	uint32_t &mtime = newTimes[1];
 	bool modifyTimes[2] = {true, true};
