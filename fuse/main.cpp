@@ -273,6 +273,18 @@ static int fs_mkdir(const char *path, mode_t mode)
 	return 0;
 }
 
+static int fs_rmdir(const char *path)
+{
+	Logger::log(std::string("rmdir called for path: ") + path, LOG_DEBUG);
+	FS &fs = g_FileSystem;
+	ErrorCode err = fs.rmdir(path);
+	if (err != SUCCESS)
+	{
+		return errorCodeToInt(err);
+	}
+	return 0;
+}
+
 static struct fuse_operations makeFsOperations()
 {
 	struct fuse_operations ops = {};
@@ -295,6 +307,7 @@ static struct fuse_operations makeFsOperations()
 	ops.readlink = fs_readlink;
 	ops.statfs = fs_statfs;
 	ops.mkdir = fs_mkdir;
+	ops.rmdir = fs_rmdir;
 	return ops;
 }
 

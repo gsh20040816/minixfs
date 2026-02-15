@@ -80,4 +80,5 @@ public:
 	ErrorCode truncateFile(Ino inodeNumber, uint32_t newSize);
 	ErrorCode renameFile(const std::string &from, const std::string &to, bool failIfDstExists);
 	ErrorCode mkdir(const std::string &path, uint16_t mode, uint16_t uid, uint16_t gid);
+	ErrorCode rmdir(const std::string &path);
 };
