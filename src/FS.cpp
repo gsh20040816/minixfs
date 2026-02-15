@@ -329,6 +329,23 @@ ErrorCode FS::closeFile(Ino inodeNumber)
 	return SUCCESS;
 }
 
+ErrorCode FS::linkFile(const std::string &existingPath, const std::string &newPath)
+{
+	ErrorCode err;
+	Ino srcInodeNumber = g_PathResolver.resolvePath(existingPath, err, MINIX3_ROOT_INODE, false);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	auto [dstParentPath, dstName] = splitPathIntoDirAndBase(newPath);
+	Ino dstParentInodeNumber = g_PathResolver.resolvePath(dstParentPath, err);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	return g_FileLinker.linkFile(dstParentInodeNumber, dstName, srcInodeNumber);
+}
+
 ErrorCode FS::unlinkFile(const std::string &path)
 {
 	ErrorCode err;

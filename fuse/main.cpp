@@ -285,6 +285,18 @@ static int fs_rmdir(const char *path)
 	return 0;
 }
 
+static int fs_link(const char *from, const char *to)
+{
+	Logger::log(std::string("link called from path: ") + from + " to path: " + to, LOG_DEBUG);
+	FS &fs = g_FileSystem;
+	ErrorCode err = fs.linkFile(from, to);
+	if (err != SUCCESS)
+	{
+		return errorCodeToInt(err);
+	}
+	return 0;
+}
+
 static struct fuse_operations makeFsOperations()
 {
 	struct fuse_operations ops = {};

@@ -74,6 +74,7 @@ public:
 	struct statvfs getFSStat(ErrorCode &outError);
 	ErrorCode openFile(const std::string &path, Ino &outInodeNumber, uint32_t flags);
 	ErrorCode closeFile(Ino inodeNumber);
+	ErrorCode linkFile(const std::string &existingPath, const std::string &newPath);
 	ErrorCode unlinkFile(const std::string &path);
 	Ino createFile(const std::string &path, const std::string &name, uint16_t mode, uint16_t uid, uint16_t gid, ErrorCode &outError);
 	ErrorCode truncateFile(const std::string &path, uint32_t newSize);
