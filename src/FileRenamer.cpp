@@ -35,6 +35,11 @@ void FileRenamer::setFileLinker(FileLinker &fileLinker)
 	this->fileLinker = &fileLinker;
 }
 
+void FileRenamer::setDirDeleter(DirDeleter &dirDeleter)
+{
+	this->dirDeleter = &dirDeleter;
+}
+
 ErrorCode FileRenamer::rename(Ino srcParentInodeNumber, const std::string &srcName, Ino dstParentInodeNumber, const std::string &dstName, bool failIfDstExists)
 {
 	MinixInode3 srcParentInode, dstParentInode;
@@ -93,7 +98,7 @@ ErrorCode FileRenamer::rename(Ino srcParentInodeNumber, const std::string &srcNa
 		}
 		if (isDstSubdirOfSrc)
 		{
-			return ERROR_DIRECTORY_NOT_EMPTY;
+			return ERROR_MOVE_TO_SUBDIR;
 		}
 	}
 	if (dstExists)
@@ -169,7 +174,14 @@ ErrorCode FileRenamer::rename(Ino srcParentInodeNumber, const std::string &srcNa
 	}
 	if (dstExists)
 	{
-		err = fileDeleter->unlinkFile(dstParentInodeNumber, dstEntryIndex);
+		if (srcInode.isDirectory())
+		{
+			err = dirDeleter->deleteDir(dstParentInodeNumber, dstName);
+		}
+		else
+		{
+			err = fileDeleter->unlinkFile(dstParentInodeNumber, dstEntryIndex);
+		}
 		if (err != SUCCESS)
 		{
 			return err;

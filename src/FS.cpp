@@ -99,6 +99,12 @@ ErrorCode FS::mount()
 	g_FileLinker.setDirWriter(g_DirWriter);
 	g_FileLinker.setPathResolver(g_PathResolver);
 
+	g_DirDeleter.setInodeReader(g_InodeReader);
+	g_DirDeleter.setInodeWriter(g_InodeWriter);
+	g_DirDeleter.setDirReader(g_DirReader);
+	g_DirDeleter.setFileDeleter(g_FileDeleter);
+	g_DirDeleter.setPathResolver(g_PathResolver);
+
 	g_FileRenamer.setDirReader(g_DirReader);
 	g_FileRenamer.setDirWriter(g_DirWriter);
 	g_FileRenamer.setInodeReader(g_InodeReader);
@@ -106,6 +112,7 @@ ErrorCode FS::mount()
 	g_FileRenamer.setFileDeleter(g_FileDeleter);
 	g_FileRenamer.setPathResolver(g_PathResolver);
 	g_FileRenamer.setFileLinker(g_FileLinker);
+	g_FileRenamer.setDirDeleter(g_DirDeleter);
 
 	g_DirCreator.setInodeReader(g_InodeReader);
 	g_DirCreator.setInodeWriter(g_InodeWriter);

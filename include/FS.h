@@ -18,6 +18,7 @@
 #include "DirReader.h"
 #include "DirWriter.h"
 #include "DirCreator.h"
+#include "DirDeleter.h"
 #include "PathResolver.h"
 #include "LinkReader.h"
 #include "Allocator.h"
@@ -50,6 +51,7 @@ private:
 	FileLinker g_FileLinker;
 	FileRenamer g_FileRenamer;
 	DirCreator g_DirCreator;
+	DirDeleter g_DirDeleter;
 public:
 	FS();
 	FS(const std::string &devicePath);

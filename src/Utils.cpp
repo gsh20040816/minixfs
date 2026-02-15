@@ -103,6 +103,10 @@ int errorCodeToInt(ErrorCode code)
 		return -EISDIR;
 	case ERROR_DIRECTORY_NOT_EMPTY:
 		return -ENOTEMPTY;
+	case ERROR_MOVE_TO_SUBDIR:
+		return -EINVAL;
+	case ERROR_DELETE_ROOT_DIR:
+		return -EINVAL;
 	default:
 		return -EIO;
 	}
