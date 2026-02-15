@@ -343,6 +343,16 @@ ErrorCode FS::linkFile(const std::string &existingPath, const std::string &newPa
 	{
 		return err;
 	}
+	MinixInode3 srcInode;
+	err = g_InodeReader.readInode(srcInodeNumber, &srcInode);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	if (srcInode.isDirectory())
+	{
+		return ERROR_LINK_DIRECTORY;
+	}
 	return g_FileLinker.linkFile(dstParentInodeNumber, dstName, srcInodeNumber);
 }
 
