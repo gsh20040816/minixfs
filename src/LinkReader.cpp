@@ -20,7 +20,7 @@ ErrorCode LinkReader::readLink(Ino inodeNumber, std::string &outLinkTarget)
 	}
 	if (!inode.isSymbolicLink())
 	{
-		return ERROR_FS_BROKEN;
+		return ERROR_IS_NOT_SYMBOLIC_LINK;
 	}
 	uint32_t linkSize = inode.i_size;
 	if (linkSize > MAX_LINK_SIZE)

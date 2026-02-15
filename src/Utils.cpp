@@ -107,6 +107,8 @@ int errorCodeToInt(ErrorCode code)
 		return -EINVAL;
 	case ERROR_DELETE_ROOT_DIR:
 		return -EINVAL;
+	case ERROR_IS_NOT_SYMBOLIC_LINK:
+		return -EINVAL;
 	default:
 		return -EIO;
 	}
