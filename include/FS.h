@@ -22,6 +22,7 @@
 #include "PathResolver.h"
 #include "LinkReader.h"
 #include "Allocator.h"
+#include "AttributeUpdater.h"
 #include <string>
 #include <cstdint>
 #include <vector>
@@ -52,6 +53,7 @@ private:
 	FileRenamer g_FileRenamer;
 	DirCreator g_DirCreator;
 	DirDeleter g_DirDeleter;
+	AttributeUpdater g_AttributeUpdater;
 public:
 	FS();
 	FS(const std::string &devicePath);
@@ -82,4 +84,7 @@ public:
 	ErrorCode renameFile(const std::string &from, const std::string &to, bool failIfDstExists);
 	ErrorCode mkdir(const std::string &path, uint16_t mode, uint16_t uid, uint16_t gid);
 	ErrorCode rmdir(const std::string &path);
+	ErrorCode chmod(const std::string &path, uint16_t mode);
+	ErrorCode chown(const std::string &path, uint16_t uid, uint16_t gid);
+	ErrorCode utimens(const std::string &path, uint32_t atime, uint32_t mtime);
 };

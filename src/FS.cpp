@@ -120,6 +120,9 @@ ErrorCode FS::mount()
 	g_DirCreator.setFileCreator(g_FileCreator);
 	g_DirCreator.setFileLinker(g_FileLinker);
 
+	g_AttributeUpdater.setInodeReader(g_InodeReader);
+	g_AttributeUpdater.setInodeWriter(g_InodeWriter);
+
 	g_imapAllocator.setBlockDevice(bd);
 	err = g_imapAllocator.init(layout.imapStart, layout.totalInodes + 1, 1, layout.blockSize);
 	if (err != SUCCESS)
@@ -531,4 +534,37 @@ struct statvfs FS::getFSStat(ErrorCode &outError)
 	st.f_namemax = MINIX3_DIR_NAME_MAX;
 	outError = SUCCESS;
 	return st;
+}
+
+ErrorCode FS::chmod(const std::string &path, uint16_t mode)
+{
+	ErrorCode err;
+	Ino inodeNumber = g_PathResolver.resolvePath(path, err, MINIX3_ROOT_INODE, false);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	return g_AttributeUpdater.chmod(inodeNumber, mode);
+}
+
+ErrorCode FS::chown(const std::string &path, uint16_t uid, uint16_t gid)
+{
+	ErrorCode err;
+	Ino inodeNumber = g_PathResolver.resolvePath(path, err, MINIX3_ROOT_INODE, false);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	return g_AttributeUpdater.chown(inodeNumber, uid, gid);
+}
+
+ErrorCode FS::utimens(const std::string &path, uint32_t atime, uint32_t mtime)
+{
+	ErrorCode err;
+	Ino inodeNumber = g_PathResolver.resolvePath(path, err, MINIX3_ROOT_INODE, false);
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	return g_AttributeUpdater.utimens(inodeNumber, atime, mtime);
 }

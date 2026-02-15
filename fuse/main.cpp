@@ -304,6 +304,42 @@ static int fs_link(const char *from, const char *to)
 	return 0;
 }
 
+static int fs_chmod(const char *path, mode_t mode, fuse_file_info *fi)
+{
+	Logger::log(std::string("chmod called for path: ") + path + ", mode: " + std::to_string(mode), LOG_DEBUG);
+	FS &fs = g_FileSystem;
+	ErrorCode err = fs.chmod(path, static_cast<uint16_t>(mode));
+	if (err != SUCCESS)
+	{
+		return errorCodeToInt(err);
+	}
+	return 0;
+}
+
+static int fs_chown(const char *path, uid_t uid, gid_t gid, fuse_file_info *fi)
+{
+	Logger::log(std::string("chown called for path: ") + path + ", uid: " + std::to_string(uid) + ", gid: " + std::to_string(gid), LOG_DEBUG);
+	FS &fs = g_FileSystem;
+	ErrorCode err = fs.chown(path, static_cast<uint16_t>(uid), static_cast<uint16_t>(gid));
+	if (err != SUCCESS)
+	{
+		return errorCodeToInt(err);
+	}
+	return 0;
+}
+
+static int fs_utimens(const char *path, const struct timespec tv[2], fuse_file_info *fi)
+{
+	Logger::log(std::string("utimens called for path: ") + path, LOG_DEBUG);
+	FS &fs = g_FileSystem;
+	ErrorCode err = fs.utimens(path, static_cast<uint32_t>(tv[0].tv_sec), static_cast<uint32_t>(tv[1].tv_sec));
+	if (err != SUCCESS)
+	{
+		return errorCodeToInt(err);
+	}
+	return 0;
+}
+
 static struct fuse_operations makeFsOperations()
 {
 	struct fuse_operations ops = {};
@@ -329,6 +365,9 @@ static struct fuse_operations makeFsOperations()
 	ops.statfs = fs_statfs;
 	ops.mkdir = fs_mkdir;
 	ops.rmdir = fs_rmdir;
+	ops.chmod = fs_chmod;
+	ops.chown = fs_chown;
+	ops.utimens = fs_utimens;
 	return ops;
 }
 
