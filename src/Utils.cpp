@@ -110,7 +110,7 @@ int errorCodeToInt(ErrorCode code)
 	case ERROR_IS_NOT_SYMBOLIC_LINK:
 		return -EINVAL;
 	case ERROR_LINK_DIRECTORY:
-		return -EISDIR;
+		return -EPERM;
 	default:
 		return -EIO;
 	}

@@ -12,6 +12,7 @@ FS g_FileSystem;
 static void *fs_init(fuse_conn_info *conn, fuse_config *cfg)
 {
 	cfg->kernel_cache = 1;
+	cfg->use_ino = 1;
 	Logger::log("Filesystem initialized", LOG_INFO);
 	return nullptr;
 }
