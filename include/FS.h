@@ -85,6 +85,6 @@ public:
 	ErrorCode mkdir(const std::string &path, uint16_t mode, uint16_t uid, uint16_t gid);
 	ErrorCode rmdir(const std::string &path);
 	ErrorCode chmod(const std::string &path, uint16_t mode);
-	ErrorCode chown(const std::string &path, uint16_t uid, uint16_t gid);
-	ErrorCode utimens(const std::string &path, uint32_t atime, uint32_t mtime);
+	ErrorCode chown(const std::string &path, uint16_t uid, uint16_t gid, bool updateUID = true, bool updateGID = true);
+	ErrorCode utimens(const std::string &path, uint32_t atime, uint32_t mtime, bool updateAtime = true, bool updateMtime = true);
 };

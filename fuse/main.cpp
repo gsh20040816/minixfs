@@ -320,7 +320,9 @@ static int fs_chown(const char *path, uid_t uid, gid_t gid, fuse_file_info *fi)
 {
 	Logger::log(std::string("chown called for path: ") + path + ", uid: " + std::to_string(uid) + ", gid: " + std::to_string(gid), LOG_DEBUG);
 	FS &fs = g_FileSystem;
-	ErrorCode err = fs.chown(path, static_cast<uint16_t>(uid), static_cast<uint16_t>(gid));
+	bool updateUID = uid != static_cast<uid_t>(-1);
+	bool updateGID = gid != static_cast<gid_t>(-1);
+	ErrorCode err = fs.chown(path, static_cast<uint16_t>(uid), static_cast<uint16_t>(gid), updateUID, updateGID);
 	if (err != SUCCESS)
 	{
 		return errorCodeToInt(err);
@@ -332,7 +334,42 @@ static int fs_utimens(const char *path, const struct timespec tv[2], fuse_file_i
 {
 	Logger::log(std::string("utimens called for path: ") + path, LOG_DEBUG);
 	FS &fs = g_FileSystem;
-	ErrorCode err = fs.utimens(path, static_cast<uint32_t>(tv[0].tv_sec), static_cast<uint32_t>(tv[1].tv_sec));
+	uint32_t newTimes[2];
+	uint32_t &atime = newTimes[0];
+	uint32_t &mtime = newTimes[1];
+	bool modifyTimes[2] = {true, true};
+	bool &modifyAtime = modifyTimes[0];
+	bool &modifyMtime = modifyTimes[1];
+	if (tv == nullptr)
+	{
+		uint32_t currentTime = static_cast<uint32_t>(time(nullptr));
+		atime = currentTime;
+		mtime = currentTime;
+	}
+	else
+	{
+		const uint32_t NSEC_MAX = 999999999;
+		for (int i = 0; i < 2; i++)
+		{
+			if (tv[i].tv_nsec == UTIME_NOW)
+			{
+				newTimes[i] = static_cast<uint32_t>(time(nullptr));
+			}
+			else if (tv[i].tv_nsec == UTIME_OMIT)
+			{
+				modifyTimes[i] = false;
+			}
+			else
+			{
+				if (tv[i].tv_sec < 0 || tv[i].tv_nsec < 0 || tv[i].tv_nsec > NSEC_MAX)
+				{
+					return -EINVAL;
+				}
+				newTimes[i] = static_cast<uint32_t>(tv[i].tv_sec);
+			}
+		}
+	}
+	ErrorCode err = fs.utimens(path, atime, mtime, modifyAtime, modifyMtime);
 	if (err != SUCCESS)
 	{
 		return errorCodeToInt(err);

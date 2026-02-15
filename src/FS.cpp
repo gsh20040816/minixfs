@@ -547,7 +547,7 @@ ErrorCode FS::chmod(const std::string &path, uint16_t mode)
 	return g_AttributeUpdater.chmod(inodeNumber, mode);
 }
 
-ErrorCode FS::chown(const std::string &path, uint16_t uid, uint16_t gid)
+ErrorCode FS::chown(const std::string &path, uint16_t uid, uint16_t gid, bool updateUID, bool updateGID)
 {
 	ErrorCode err;
 	Ino inodeNumber = g_PathResolver.resolvePath(path, err, MINIX3_ROOT_INODE, false);
@@ -555,10 +555,10 @@ ErrorCode FS::chown(const std::string &path, uint16_t uid, uint16_t gid)
 	{
 		return err;
 	}
-	return g_AttributeUpdater.chown(inodeNumber, uid, gid);
+	return g_AttributeUpdater.chown(inodeNumber, uid, gid, updateUID, updateGID);
 }
 
-ErrorCode FS::utimens(const std::string &path, uint32_t atime, uint32_t mtime)
+ErrorCode FS::utimens(const std::string &path, uint32_t atime, uint32_t mtime, bool updateAtime, bool updateMtime)
 {
 	ErrorCode err;
 	Ino inodeNumber = g_PathResolver.resolvePath(path, err, MINIX3_ROOT_INODE, false);
@@ -566,5 +566,5 @@ ErrorCode FS::utimens(const std::string &path, uint32_t atime, uint32_t mtime)
 	{
 		return err;
 	}
-	return g_AttributeUpdater.utimens(inodeNumber, atime, mtime);
+	return g_AttributeUpdater.utimens(inodeNumber, atime, mtime, updateAtime, updateMtime);
 }

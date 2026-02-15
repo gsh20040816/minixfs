@@ -24,7 +24,7 @@ ErrorCode AttributeUpdater::chmod(Ino inodeNumber, uint16_t mode)
 	return inodeWriter->writeInode(inodeNumber, &inode);
 }
 
-ErrorCode AttributeUpdater::chown(Ino inodeNumber, uint16_t uid, uint16_t gid)
+ErrorCode AttributeUpdater::chown(Ino inodeNumber, uint16_t uid, uint16_t gid, bool updateUID, bool updateGID)
 {
 	MinixInode3 inode;
 	ErrorCode err = inodeReader->readInode(inodeNumber, &inode);
@@ -32,12 +32,18 @@ ErrorCode AttributeUpdater::chown(Ino inodeNumber, uint16_t uid, uint16_t gid)
 	{
 		return err;
 	}
-	inode.i_uid = uid;
-	inode.i_gid = gid;
+	if (updateUID)
+	{
+		inode.i_uid = uid;
+	}
+	if (updateGID)
+	{
+		inode.i_gid = gid;
+	}
 	return inodeWriter->writeInode(inodeNumber, &inode);
 }
 
-ErrorCode AttributeUpdater::utimens(Ino inodeNumber, uint32_t atime, uint32_t mtime)
+ErrorCode AttributeUpdater::utimens(Ino inodeNumber, uint32_t atime, uint32_t mtime, bool updateAtime, bool updateMtime)
 {
 	MinixInode3 inode;
 	ErrorCode err = inodeReader->readInode(inodeNumber, &inode);
@@ -45,7 +51,13 @@ ErrorCode AttributeUpdater::utimens(Ino inodeNumber, uint32_t atime, uint32_t mt
 	{
 		return err;
 	}
-	inode.i_atime = atime;
-	inode.i_mtime = mtime;
+	if (updateAtime)
+	{
+		inode.i_atime = atime;
+	}
+	if (updateMtime)
+	{
+		inode.i_mtime = mtime;
+	}
 	return inodeWriter->writeInode(inodeNumber, &inode);
 }
