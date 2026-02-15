@@ -198,7 +198,7 @@ Ino PathResolver::resolvePath(const std::string &path, ErrorCode &outError, Ino 
 				}
 				return 0;
 			}
-			currentInode = resolvePath(linkTarget, err, linkTarget[0] == '/' ? MINIX3_ROOT_INODE : parentInode, resolveLastLink);
+			currentInode = resolvePath(linkTarget, err, linkTarget[0] == '/' ? MINIX3_ROOT_INODE : parentInode, true);
 			if (err != SUCCESS)
 			{
 				outError = err;
