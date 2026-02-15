@@ -314,6 +314,7 @@ static struct fuse_operations makeFsOperations()
 	ops.create = fs_create;
 	ops.truncate = fs_truncate;
 	ops.rename = fs_rename;
+	ops.link = fs_link;
 	ops.write = fs_write;
 	ops.unlink = fs_unlink;
 	ops.readlink = fs_readlink;
