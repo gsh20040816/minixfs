@@ -17,6 +17,12 @@ static void *fs_init(fuse_conn_info *conn, fuse_config *cfg)
 	return nullptr;
 }
 
+static void fs_destroy(void *private_data)
+{
+	Logger::log("Filesystem destroyed", LOG_INFO);
+	g_FileSystem.unmount();
+}
+
 static int fs_getattr(const char *path, struct stat *st, fuse_file_info *fi)
 {
 	Logger::log(std::string("getattr called for path: ") + path, LOG_DEBUG);
@@ -302,6 +308,7 @@ static struct fuse_operations makeFsOperations()
 {
 	struct fuse_operations ops = {};
 	ops.init = fs_init;
+	ops.destroy = fs_destroy;
 	ops.getattr = fs_getattr;
 	ops.opendir = fs_opendir;
 	ops.readdir = fs_readdir;
