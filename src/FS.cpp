@@ -204,13 +204,21 @@ uint32_t FS::readFile(Ino inodeNumber, uint8_t *buffer, uint32_t offset, uint32_
 
 uint32_t FS::writeFile(Ino inodeNumber, const uint8_t *data, uint32_t offset, uint32_t sizeToWrite, ErrorCode &outError)
 {
-	ErrorCode err = g_FileWriter.writeFile(inodeNumber, data, offset, sizeToWrite);
+	ErrorCode err = g_TransactionManager.beginTransaction();
 	if (err != SUCCESS)
 	{
 		outError = err;
 		return 0;
 	}
+	err = g_FileWriter.writeFile(inodeNumber, data, offset, sizeToWrite);
+	if (err != SUCCESS)
+	{
+		outError = err;
+		g_TransactionManager.revertTransaction();
+		return 0;
+	}
 	outError = SUCCESS;
+	g_TransactionManager.commitTransaction();
 	return sizeToWrite;
 }
 
@@ -236,28 +244,49 @@ uint32_t FS::writeFile(const std::string &path, const uint8_t *data, uint32_t of
 
 Ino FS::createFile(const std::string &path, const std::string &name, uint16_t mode, uint16_t uid, uint16_t gid, ErrorCode &outError)
 {
+	outError = g_TransactionManager.beginTransaction();
+	if (outError != SUCCESS)
+	{
+		return 0;
+	}
 	Ino parentInodeNumber = g_PathResolver.resolvePath(path, outError);
 	if (outError != SUCCESS)
 	{
+		g_TransactionManager.revertTransaction();
 		return 0;
 	}
 	Ino newInodeNumber = g_FileCreator.createFile(parentInodeNumber, name, mode, uid, gid, outError);
 	if (outError != SUCCESS)
 	{
+		g_TransactionManager.revertTransaction();
 		return 0;
 	}
+	g_TransactionManager.commitTransaction();
 	return newInodeNumber;
 }
 
 Ino FS::createSymlink(const std::string &target, const std::string &path, uint16_t mode, uint16_t uid, uint16_t gid, ErrorCode &outError)
 {
-	auto [parentPath, name] = splitPathIntoDirAndBase(path);
-	Ino parentInodeNumber = g_PathResolver.resolvePath(parentPath, outError);
+	outError = g_TransactionManager.beginTransaction();
 	if (outError != SUCCESS)
 	{
 		return 0;
 	}
-	return g_SymlinkCreator.createSymlink(parentInodeNumber, name, target, mode, uid, gid, outError);
+	auto [parentPath, name] = splitPathIntoDirAndBase(path);
+	Ino parentInodeNumber = g_PathResolver.resolvePath(parentPath, outError);
+	if (outError != SUCCESS)
+	{
+		g_TransactionManager.revertTransaction();
+		return 0;
+	}
+	Ino symlinkInodeNumber = g_SymlinkCreator.createSymlink(parentInodeNumber, name, target, mode, uid, gid, outError);
+	if (outError != SUCCESS)
+	{
+		g_TransactionManager.revertTransaction();
+		return 0;
+	}
+	g_TransactionManager.commitTransaction();
+	return symlinkInodeNumber;
 }
 
 ErrorCode FS::truncateFile(const std::string &path, uint32_t newSize)
@@ -273,35 +302,62 @@ ErrorCode FS::truncateFile(const std::string &path, uint32_t newSize)
 
 ErrorCode FS::truncateFile(Ino inodeNumber, uint32_t newSize)
 {
-	MinixInode3 inode;
-	ErrorCode err = g_InodeReader.readInode(inodeNumber, &inode);
+	ErrorCode err = g_TransactionManager.beginTransaction();
 	if (err != SUCCESS)
 	{
 		return err;
 	}
+	MinixInode3 inode;
+	ErrorCode err = g_InodeReader.readInode(inodeNumber, &inode);
+	if (err != SUCCESS)
+	{
+		g_TransactionManager.revertTransaction();
+		return err;
+	}
 	if (!inode.isRegularFile())
 	{
+		g_TransactionManager.revertTransaction();
 		return ERROR_NOT_REGULAR_FILE;
 	}
-	return g_FileWriter.truncateFile(inodeNumber, newSize);
+	err = g_FileWriter.truncateFile(inodeNumber, newSize);
+	if (err != SUCCESS)
+	{
+		g_TransactionManager.revertTransaction();
+		return err;
+	}
+	g_TransactionManager.commitTransaction();
+	return SUCCESS;
 }
 
 ErrorCode FS::renameFile(const std::string &from, const std::string &to, bool failIfDstExists)
 {
+	ErrorCode err = g_TransactionManager.beginTransaction();
+	if (err != SUCCESS)
+	{
+		return err;
+	}
 	auto [srcParentPath, srcName] = splitPathIntoDirAndBase(from);
 	auto [dstParentPath, dstName] = splitPathIntoDirAndBase(to);
-	ErrorCode err;
 	Ino srcParentInodeNumber = g_PathResolver.resolvePath(srcParentPath, err);
 	if (err != SUCCESS)
 	{
+		g_TransactionManager.revertTransaction();
 		return err;
 	}
 	Ino dstParentInodeNumber = g_PathResolver.resolvePath(dstParentPath, err);
 	if (err != SUCCESS)
 	{
+		g_TransactionManager.revertTransaction();
 		return err;
 	}
-	return g_FileRenamer.rename(srcParentInodeNumber, srcName, dstParentInodeNumber, dstName, failIfDstExists);
+	err = g_FileRenamer.rename(srcParentInodeNumber, srcName, dstParentInodeNumber, dstName, failIfDstExists);
+	if (err != SUCCESS)
+	{
+		g_TransactionManager.revertTransaction();
+		return err;
+	}
+	g_TransactionManager.commitTransaction();
+	return SUCCESS;
 }
 
 ErrorCode FS::openFile(const std::string &path, Ino &outInodeNumber, uint32_t flags)
@@ -336,89 +392,144 @@ ErrorCode FS::openFile(const std::string &path, Ino &outInodeNumber, uint32_t fl
 
 ErrorCode FS::closeFile(Ino inodeNumber)
 {
-	g_FileCounter.remove(inodeNumber);
-	MinixInode3 inode;
-	ErrorCode err = g_InodeReader.readInode(inodeNumber, &inode);
+	ErrorCode err = g_TransactionManager.beginTransaction();
 	if (err != SUCCESS)
 	{
 		return err;
 	}
+	g_FileCounter.remove(inodeNumber);
+	MinixInode3 inode;
+	err = g_InodeReader.readInode(inodeNumber, &inode);
+	if (err != SUCCESS)
+	{
+		g_TransactionManager.revertTransaction();
+		return err;
+	}
 	if (inode.i_nlinks == 0 && g_FileCounter.empty(inodeNumber))
 	{
-		return g_FileDeleter.deleteFile(inodeNumber);
+		err = g_FileDeleter.deleteFile(inodeNumber);
+		if (err != SUCCESS)
+		{
+			g_TransactionManager.revertTransaction();
+			return err;
+		}
 	}
+	g_TransactionManager.commitTransaction();
 	return SUCCESS;
 }
 
 ErrorCode FS::linkFile(const std::string &existingPath, const std::string &newPath)
 {
-	ErrorCode err;
+	ErrorCode err = g_TransactionManager.beginTransaction();
+	if (err != SUCCESS)
+	{
+		return err;
+	}
 	Ino srcInodeNumber = g_PathResolver.resolvePath(existingPath, err, MINIX3_ROOT_INODE, false);
 	if (err != SUCCESS)
 	{
+		g_TransactionManager.revertTransaction();
 		return err;
 	}
 	auto [dstParentPath, dstName] = splitPathIntoDirAndBase(newPath);
 	Ino dstParentInodeNumber = g_PathResolver.resolvePath(dstParentPath, err);
 	if (err != SUCCESS)
 	{
+		g_TransactionManager.revertTransaction();
 		return err;
 	}
 	MinixInode3 srcInode;
 	err = g_InodeReader.readInode(srcInodeNumber, &srcInode);
 	if (err != SUCCESS)
 	{
+		g_TransactionManager.revertTransaction();
 		return err;
 	}
 	if (srcInode.isDirectory())
 	{
+		g_TransactionManager.revertTransaction();
 		return ERROR_LINK_DIRECTORY;
 	}
-	return g_FileLinker.linkFile(dstParentInodeNumber, dstName, srcInodeNumber);
+	err = g_FileLinker.linkFile(dstParentInodeNumber, dstName, srcInodeNumber);
+	if (err != SUCCESS)
+	{
+		g_TransactionManager.revertTransaction();
+		return err;
+	}
+	g_TransactionManager.commitTransaction();
+	return SUCCESS;
 }
 
 ErrorCode FS::unlinkFile(const std::string &path)
 {
-	ErrorCode err;
+	ErrorCode err = g_TransactionManager.beginTransaction();
+	if (err != SUCCESS)
+	{
+		return err;
+	}
 	auto [parentPath, name] = splitPathIntoDirAndBase(path);
 	Ino parentInodeNumber = g_PathResolver.resolvePath(parentPath, err);
 	if (err != SUCCESS)
 	{
+		g_TransactionManager.revertTransaction();
 		return err;
 	}
 	uint32_t idx = g_PathResolver.getIdxFromParentAndName(parentInodeNumber, name, err);
 	if (err != SUCCESS)
 	{
+		g_TransactionManager.revertTransaction();
 		return err;
 	}
 	Ino inodeNumber = g_PathResolver.resolvePath(path, err, MINIX3_ROOT_INODE, false);
 	if (err != SUCCESS)
 	{
+		g_TransactionManager.revertTransaction();
 		return err;
 	}
 	MinixInode3 inode;
 	err = g_InodeReader.readInode(inodeNumber, &inode);
 	if (err != SUCCESS)
 	{
+		g_TransactionManager.revertTransaction();
 		return err;
 	}
 	if (inode.isDirectory())
 	{
+		g_TransactionManager.revertTransaction();
 		return ERROR_UNLINK_DIRECTORY;
 	}
-	return g_FileDeleter.unlinkFile(parentInodeNumber, idx);
+	err = g_FileDeleter.unlinkFile(parentInodeNumber, idx);
+	if (err != SUCCESS)
+	{
+		g_TransactionManager.revertTransaction();
+		return err;
+	}
+	g_TransactionManager.commitTransaction();
+	return SUCCESS;
 }
 
 ErrorCode FS::mkdir(const std::string &path, uint16_t mode, uint16_t uid, uint16_t gid)
 {
-	auto [parentPath, name] = splitPathIntoDirAndBase(path);
-	ErrorCode err;
-	Ino parentInodeNumber = g_PathResolver.resolvePath(parentPath, err);
+	ErrorCode err = g_TransactionManager.beginTransaction();
 	if (err != SUCCESS)
 	{
 		return err;
 	}
-	return g_DirCreator.createDir(parentInodeNumber, name, mode, uid, gid);
+	auto [parentPath, name] = splitPathIntoDirAndBase(path);
+	Ino parentInodeNumber = g_PathResolver.resolvePath(parentPath, err);
+	if (err != SUCCESS)
+	{
+		g_TransactionManager.revertTransaction();
+		return err;
+	}
+	err = g_DirCreator.createDir(parentInodeNumber, name, mode, uid, gid);
+	if (err != SUCCESS)
+	{
+		g_TransactionManager.revertTransaction();
+		return err;
+	}
+	g_TransactionManager.commitTransaction();
+	return SUCCESS;
 }
 
 ErrorCode FS::rmdir(const std::string &path)
@@ -428,13 +539,25 @@ ErrorCode FS::rmdir(const std::string &path)
 		return ERROR_DELETE_ROOT_DIR;
 	}
 	auto [parentPath, name] = splitPathIntoDirAndBase(path);
-	ErrorCode err;
-	Ino parentInodeNumber = g_PathResolver.resolvePath(parentPath, err);
+	ErrorCode err = g_TransactionManager.beginTransaction();
 	if (err != SUCCESS)
 	{
 		return err;
 	}
-	return g_DirDeleter.deleteDir(parentInodeNumber, name);
+	Ino parentInodeNumber = g_PathResolver.resolvePath(parentPath, err);
+	if (err != SUCCESS)
+	{
+		g_TransactionManager.revertTransaction();
+		return err;
+	}
+	err =  g_DirDeleter.deleteDir(parentInodeNumber, name);
+	if (err != SUCCESS)
+	{
+		g_TransactionManager.revertTransaction();
+		return err;
+	}
+	g_TransactionManager.commitTransaction();
+	return SUCCESS;
 }
 
 struct stat FS::getFileStat(const std::string &path, ErrorCode &outError)
@@ -556,33 +679,69 @@ struct statvfs FS::getFSStat(ErrorCode &outError)
 
 ErrorCode FS::chmod(const std::string &path, uint16_t mode)
 {
-	ErrorCode err;
-	Ino inodeNumber = g_PathResolver.resolvePath(path, err, MINIX3_ROOT_INODE, false);
+	ErrorCode err = g_TransactionManager.beginTransaction();
 	if (err != SUCCESS)
 	{
 		return err;
 	}
-	return g_AttributeUpdater.chmod(inodeNumber, mode);
+	Ino inodeNumber = g_PathResolver.resolvePath(path, err, MINIX3_ROOT_INODE, false);
+	if (err != SUCCESS)
+	{
+		g_TransactionManager.revertTransaction();
+		return err;
+	}
+	err = g_AttributeUpdater.chmod(inodeNumber, mode);
+	if (err != SUCCESS)
+	{
+		g_TransactionManager.revertTransaction();
+		return err;
+	}
+	g_TransactionManager.commitTransaction();
+	return SUCCESS;
 }
 
 ErrorCode FS::chown(const std::string &path, uint16_t uid, uint16_t gid, bool updateUID, bool updateGID)
 {
-	ErrorCode err;
-	Ino inodeNumber = g_PathResolver.resolvePath(path, err, MINIX3_ROOT_INODE, false);
+	ErrorCode err = g_TransactionManager.beginTransaction();
 	if (err != SUCCESS)
 	{
 		return err;
 	}
-	return g_AttributeUpdater.chown(inodeNumber, uid, gid, updateUID, updateGID);
+	Ino inodeNumber = g_PathResolver.resolvePath(path, err, MINIX3_ROOT_INODE, false);
+	if (err != SUCCESS)
+	{
+		g_TransactionManager.revertTransaction();
+		return err;
+	}
+	err = g_AttributeUpdater.chown(inodeNumber, uid, gid, updateUID, updateGID);
+	if (err != SUCCESS)
+	{
+		g_TransactionManager.revertTransaction();
+		return err;
+	}
+	g_TransactionManager.commitTransaction();
+	return SUCCESS;
 }
 
 ErrorCode FS::utimens(const std::string &path, uint32_t atime, uint32_t mtime, bool updateAtime, bool updateMtime)
 {
-	ErrorCode err;
-	Ino inodeNumber = g_PathResolver.resolvePath(path, err, MINIX3_ROOT_INODE, false);
+	ErrorCode err = g_TransactionManager.beginTransaction();
 	if (err != SUCCESS)
 	{
 		return err;
 	}
-	return g_AttributeUpdater.utimens(inodeNumber, atime, mtime, updateAtime, updateMtime);
+	Ino inodeNumber = g_PathResolver.resolvePath(path, err, MINIX3_ROOT_INODE, false);
+	if (err != SUCCESS)
+	{
+		g_TransactionManager.revertTransaction();
+		return err;
+	}
+	err = g_AttributeUpdater.utimens(inodeNumber, atime, mtime, updateAtime, updateMtime);
+	if (err != SUCCESS)
+	{
+		g_TransactionManager.revertTransaction();
+		return err;
+	}
+	g_TransactionManager.commitTransaction();
+	return SUCCESS;
 }
