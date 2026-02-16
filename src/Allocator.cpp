@@ -61,6 +61,10 @@ ErrorCode Allocator::init(uint32_t bmapStartBlock, uint32_t totalBmaps, uint32_t
 
 ErrorCode Allocator::sync()
 {
+	if (isInTransaction)
+	{
+		return ERROR_IS_IN_TRANSACTION;
+	}
 	for (uint32_t i = 0; i < totalBlocks; i++)
 	{
 		if (isDirtyBlock[i])
