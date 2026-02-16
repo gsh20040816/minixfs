@@ -157,6 +157,14 @@ static int fs_read(const char *path, char *buf, size_t size, off_t offset, fuse_
 	Logger::log(std::string("read called for path: ") + path + ", size: " + std::to_string(size) + ", offset: " + std::to_string(offset), LOG_DEBUG);
 	FS &fs = g_FileSystem;
 	ErrorCode err;
+	if (offset > MINIX3_MAX_FILE_SIZE)
+	{
+		return 0;
+	}
+	if (size > MINIX3_MAX_FILE_SIZE - offset)
+	{
+		size = static_cast<size_t>(MINIX3_MAX_FILE_SIZE - offset);
+	}
 	uint32_t bytesRead = fs.readFile(fi->fh, reinterpret_cast<uint8_t*>(buf), static_cast<uint32_t>(offset), static_cast<uint32_t>(size), err);
 	if (err != SUCCESS)
 	{
@@ -170,6 +178,14 @@ static int fs_write(const char *path, const char *buf, size_t size, off_t offset
 	Logger::log(std::string("write called for path: ") + path + ", size: " + std::to_string(size) + ", offset: " + std::to_string(offset), LOG_DEBUG);
 	FS &fs = g_FileSystem;
 	ErrorCode err;
+	if (offset >= MINIX3_MAX_FILE_SIZE)
+	{
+		return -EFBIG;
+	}
+	if (size > MINIX3_MAX_FILE_SIZE - offset)
+	{
+		size = static_cast<size_t>(MINIX3_MAX_FILE_SIZE - offset);
+	}
 	uint32_t bytesWritten = fs.writeFile(fi->fh, reinterpret_cast<const uint8_t*>(buf), static_cast<uint32_t>(offset), static_cast<uint32_t>(size), err);
 	if (err != SUCCESS)
 	{
@@ -218,6 +234,10 @@ static int fs_truncate(const char *path, off_t size, fuse_file_info *fi)
 {
 	Logger::log(std::string("truncate called for path: ") + path + ", size: " + std::to_string(size), LOG_DEBUG);
 	FS &fs = g_FileSystem;
+	if (size > MINIX3_MAX_FILE_SIZE)
+	{
+		return -EFBIG;
+	}
 	if (fi != nullptr)
 	{
 		ErrorCode err = fs.truncateFile(fi->fh, static_cast<uint32_t>(size));

@@ -1,4 +1,5 @@
 #pragma once
+#include <limits>
 
 #define MINIX3_MAGIC 0x4d5a
 #define MINIX3_SUPERBLOCK_OFFSET 1024
@@ -19,3 +20,4 @@
 #define POSIX_BLOCK_SIZE 512
 #define MAX_LINK_SIZE 4096
 #define MAX_PATH_DEPTH 40
+#define MINIX3_MAX_FILE_SIZE (std::numeric_limits<uint32_t>::max())
