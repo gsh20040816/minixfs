@@ -38,10 +38,6 @@ ErrorCode FileWriter::writeFile(Ino inodeNumber, const uint8_t *data, uint32_t o
 	{
 		return err;
 	}
-	if (!inodeForMap.isRegularFile() && !inodeForMap.isDirectory())
-	{
-		return ERROR_NOT_REGULAR_FILE;
-	}
 
 	err = blockDevice->startTransaction();
 	if (err != SUCCESS)
