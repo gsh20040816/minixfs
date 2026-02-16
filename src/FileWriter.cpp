@@ -136,6 +136,22 @@ ErrorCode FileWriter::truncateFile(Ino inodeNumber, uint32_t newSize)
 			return err;
 		}
 	}
+	if (newSize % layout->zoneSize != 0 && lastZoneIndex <= oldLastZoneIndex)
+	{
+		uint32_t writeSize = layout->zoneSize - (newSize % layout->zoneSize);
+		writeSize = std::min(writeSize, inode.i_size - newSize);
+		uint8_t *zeroBuffer = static_cast<uint8_t *>(calloc(1, writeSize));
+		if (zeroBuffer == nullptr)
+		{
+			return ERROR_CANNOT_ALLOCATE_MEMORY;
+		}
+		err = writeFile(inodeNumber, zeroBuffer, newSize, writeSize);
+		free(zeroBuffer);
+		if (err != SUCCESS)
+		{
+			return err;
+		}
+	}
 	inode.i_size = newSize;
 	return inodeWriter->writeInode(inodeNumber, &inode);
 }
