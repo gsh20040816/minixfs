@@ -178,6 +178,10 @@ static int fs_write(const char *path, const char *buf, size_t size, off_t offset
 	Logger::log(std::string("write called for path: ") + path + ", size: " + std::to_string(size) + ", offset: " + std::to_string(offset), LOG_DEBUG);
 	FS &fs = g_FileSystem;
 	ErrorCode err;
+	if (size == 0)
+	{
+		return 0;
+	}
 	if (offset >= MINIX3_MAX_FILE_SIZE)
 	{
 		return -EFBIG;
