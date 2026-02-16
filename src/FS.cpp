@@ -217,8 +217,11 @@ uint32_t FS::writeFile(Ino inodeNumber, const uint8_t *data, uint32_t offset, ui
 		g_TransactionManager.revertTransaction();
 		return 0;
 	}
-	outError = SUCCESS;
-	g_TransactionManager.commitTransaction();
+	outError = g_TransactionManager.commitTransaction();
+	if (outError != SUCCESS)
+	{
+		return 0;
+	}
 	return sizeToWrite;
 }
 
@@ -261,7 +264,11 @@ Ino FS::createFile(const std::string &path, const std::string &name, uint16_t mo
 		g_TransactionManager.revertTransaction();
 		return 0;
 	}
-	g_TransactionManager.commitTransaction();
+	outError = g_TransactionManager.commitTransaction();
+	if (outError != SUCCESS)
+	{
+		return 0;
+	}
 	return newInodeNumber;
 }
 
@@ -285,7 +292,11 @@ Ino FS::createSymlink(const std::string &target, const std::string &path, uint16
 		g_TransactionManager.revertTransaction();
 		return 0;
 	}
-	g_TransactionManager.commitTransaction();
+	outError = g_TransactionManager.commitTransaction();
+	if (outError != SUCCESS)
+	{
+		return 0;
+	}
 	return symlinkInodeNumber;
 }
 
@@ -325,7 +336,11 @@ ErrorCode FS::truncateFile(Ino inodeNumber, uint32_t newSize)
 		g_TransactionManager.revertTransaction();
 		return err;
 	}
-	g_TransactionManager.commitTransaction();
+	outError = g_TransactionManager.commitTransaction();
+	if (outError != SUCCESS)
+	{
+		return outError;
+	}
 	return SUCCESS;
 }
 
@@ -356,8 +371,7 @@ ErrorCode FS::renameFile(const std::string &from, const std::string &to, bool fa
 		g_TransactionManager.revertTransaction();
 		return err;
 	}
-	g_TransactionManager.commitTransaction();
-	return SUCCESS;
+	return g_TransactionManager.commitTransaction();
 }
 
 ErrorCode FS::openFile(const std::string &path, Ino &outInodeNumber, uint32_t flags)
@@ -414,8 +428,7 @@ ErrorCode FS::closeFile(Ino inodeNumber)
 			return err;
 		}
 	}
-	g_TransactionManager.commitTransaction();
-	return SUCCESS;
+	return g_TransactionManager.commitTransaction();
 }
 
 ErrorCode FS::linkFile(const std::string &existingPath, const std::string &newPath)
@@ -456,8 +469,7 @@ ErrorCode FS::linkFile(const std::string &existingPath, const std::string &newPa
 		g_TransactionManager.revertTransaction();
 		return err;
 	}
-	g_TransactionManager.commitTransaction();
-	return SUCCESS;
+	return g_TransactionManager.commitTransaction();
 }
 
 ErrorCode FS::unlinkFile(const std::string &path)
@@ -504,8 +516,7 @@ ErrorCode FS::unlinkFile(const std::string &path)
 		g_TransactionManager.revertTransaction();
 		return err;
 	}
-	g_TransactionManager.commitTransaction();
-	return SUCCESS;
+	return g_TransactionManager.commitTransaction();
 }
 
 ErrorCode FS::mkdir(const std::string &path, uint16_t mode, uint16_t uid, uint16_t gid)
@@ -528,8 +539,7 @@ ErrorCode FS::mkdir(const std::string &path, uint16_t mode, uint16_t uid, uint16
 		g_TransactionManager.revertTransaction();
 		return err;
 	}
-	g_TransactionManager.commitTransaction();
-	return SUCCESS;
+	return g_TransactionManager.commitTransaction();
 }
 
 ErrorCode FS::rmdir(const std::string &path)
@@ -556,8 +566,7 @@ ErrorCode FS::rmdir(const std::string &path)
 		g_TransactionManager.revertTransaction();
 		return err;
 	}
-	g_TransactionManager.commitTransaction();
-	return SUCCESS;
+	return g_TransactionManager.commitTransaction();
 }
 
 struct stat FS::getFileStat(const std::string &path, ErrorCode &outError)
@@ -696,8 +705,7 @@ ErrorCode FS::chmod(const std::string &path, uint16_t mode)
 		g_TransactionManager.revertTransaction();
 		return err;
 	}
-	g_TransactionManager.commitTransaction();
-	return SUCCESS;
+	return g_TransactionManager.commitTransaction();
 }
 
 ErrorCode FS::chown(const std::string &path, uint16_t uid, uint16_t gid, bool updateUID, bool updateGID)
@@ -719,8 +727,7 @@ ErrorCode FS::chown(const std::string &path, uint16_t uid, uint16_t gid, bool up
 		g_TransactionManager.revertTransaction();
 		return err;
 	}
-	g_TransactionManager.commitTransaction();
-	return SUCCESS;
+	return g_TransactionManager.commitTransaction();
 }
 
 ErrorCode FS::utimens(const std::string &path, uint32_t atime, uint32_t mtime, bool updateAtime, bool updateMtime)
@@ -742,6 +749,5 @@ ErrorCode FS::utimens(const std::string &path, uint32_t atime, uint32_t mtime, b
 		g_TransactionManager.revertTransaction();
 		return err;
 	}
-	g_TransactionManager.commitTransaction();
-	return SUCCESS;
+	return g_TransactionManager.commitTransaction();
 }

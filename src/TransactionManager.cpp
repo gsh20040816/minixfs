@@ -15,8 +15,17 @@ void TransactionManager::setZmapAllocator(Allocator &zmapAllocator)
 	this->zmapAllocator = &zmapAllocator;
 }
 
+bool TransactionManager::isWriteLocked() const
+{
+	return writeLocked;
+}
+
 ErrorCode TransactionManager::beginTransaction()
 {
+	if (writeLocked)
+	{
+		return ERROR_FS_WRITE_LOCKED;
+	}
 	if (isInTransaction)
 	{
 		return ERROR_IS_IN_TRANSACTION;
@@ -80,18 +89,25 @@ ErrorCode TransactionManager::commitTransaction()
 	err = blockDevice->commitTransaction();
 	if (err != SUCCESS)
 	{
-		return err;
+		return setWriteLock(err);
 	}
 	err = imapAllocator->commitTransaction();
 	if (err != SUCCESS)
 	{
-		return err;
+		return setWriteLock(err);
 	}
 	err = zmapAllocator->commitTransaction();
 	if (err != SUCCESS)
 	{
-		return err;
+		return setWriteLock(err);
 	}
 	isInTransaction = false;
 	return SUCCESS;
+}
+
+ErrorCode TransactionManager::setWriteLock(ErrorCode reason)
+{
+	writeLocked = true;
+	writeLockedReason = reason;
+	return reason;
 }

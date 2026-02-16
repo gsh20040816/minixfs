@@ -113,6 +113,8 @@ int errorCodeToInt(ErrorCode code)
 		return -EPERM;
 	case ERROR_IS_NOT_IN_TRANSACTION:
 		return -EIO;
+	case ERROR_FS_WRITE_LOCKED:
+		return -EROFS;
 	default:
 		return -EIO;
 	}
