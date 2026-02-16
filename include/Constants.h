@@ -21,3 +21,4 @@
 #define MAX_LINK_SIZE 4096
 #define MAX_PATH_DEPTH 40
 #define MINIX3_MAX_FILE_SIZE (std::numeric_limits<uint32_t>::max())
+#define MAX_ALLOC_MEMORY_SIZE (1 << 26) // 64 MiB

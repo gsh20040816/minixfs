@@ -103,14 +103,22 @@ ErrorCode FileWriter::truncateFile(Ino inodeNumber, uint32_t newSize)
 	}
 	if (newSize > inode.i_size)
 	{
-		uint8_t *zeroBuffer = static_cast<uint8_t *>(calloc(1, newSize - inode.i_size));
-		if (zeroBuffer == nullptr)
+		while (inode.i_size < newSize)
 		{
-			return ERROR_CANNOT_ALLOCATE_MEMORY;
+			uint32_t allocSize = std::min(static_cast<uint32_t>(newSize - inode.i_size), static_cast<uint32_t>(MAX_ALLOC_MEMORY_SIZE));
+			uint8_t *zeroBuffer = static_cast<uint8_t *>(calloc(1, allocSize));
+			if (zeroBuffer == nullptr)
+			{
+				return ERROR_CANNOT_ALLOCATE_MEMORY;
+			}
+			err = writeFile(inodeNumber, zeroBuffer, inode.i_size, allocSize);
+			free(zeroBuffer);
+			if (err != SUCCESS)
+			{
+				return err;
+			}
+			inode.i_size += allocSize;
 		}
-		err = writeFile(inodeNumber, zeroBuffer, inode.i_size, newSize - inode.i_size);
-		free(zeroBuffer);
-		return err;
 	}
 	err = inodeWriter->writeInode(inodeNumber, &inode);
 	if (err != SUCCESS)
