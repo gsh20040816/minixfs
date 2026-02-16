@@ -47,7 +47,7 @@ ErrorCode FileDeleter::deleteFile(Ino inodeNumber)
 	{
 		return err;
 	}
-	return imapAllocator->sync();
+	return SUCCESS;
 }
 
 ErrorCode FileDeleter::unlinkFile(Ino parentInodeNumber, uint32_t idx)

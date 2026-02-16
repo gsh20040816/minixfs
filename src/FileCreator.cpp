@@ -92,7 +92,6 @@ Ino FileCreator::createFile(Ino parentInodeNumber, const std::string &name, uint
 		outError = err;
 		return 0;
 	}
-	imapAllocator->sync();
 	outError = SUCCESS;
 	return newInodeNumber;
 }
