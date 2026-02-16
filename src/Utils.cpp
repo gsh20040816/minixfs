@@ -115,6 +115,8 @@ int errorCodeToInt(ErrorCode code)
 		return -EIO;
 	case ERROR_FS_WRITE_LOCKED:
 		return -EROFS;
+	case ERROR_WRITE_READONLY:
+		return -EROFS;
 	default:
 		return -EIO;
 	}

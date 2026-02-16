@@ -394,6 +394,10 @@ ErrorCode FS::openFile(const std::string &path, Ino &outInodeNumber, uint32_t fl
 	}
 	if (flags & O_TRUNC)
 	{
+		if ((flags & O_ACCMODE) == O_RDONLY)
+		{
+			return ERROR_WRITE_READONLY;
+		}
 		err = g_TransactionManager.beginTransaction();
 		if (err != SUCCESS)
 		{
