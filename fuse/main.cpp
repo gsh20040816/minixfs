@@ -517,9 +517,9 @@ int main(int argc, char **argv)
 		fuse_opt_free_args(&args);
 		return 1;
 	}
+	fuse_opt_add_arg(&args, "-s");
 	struct fuse_operations fs_oper = makeFsOperations();
 	int ret = fuse_main(args.argc, args.argv, &fs_oper, nullptr);
-	fuse_opt_add_arg(&args, "-s");
 	fuse_opt_free_args(&args);
 	return ret;
 }
