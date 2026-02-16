@@ -84,7 +84,7 @@ int errorCodeToInt(ErrorCode code)
 	case ERROR_INVALID_BMAP_INDEX:
 		return -EIO;
 	case ERROR_INVALID_FILE_OFFSET:
-		return -EIO;
+		return -EINVAL;
 	case ERROR_IS_IN_TRANSACTION:
 		return -EIO;
 	case ERROR_LINK_TOO_LONG:
@@ -117,6 +117,8 @@ int errorCodeToInt(ErrorCode code)
 		return -EROFS;
 	case ERROR_WRITE_READONLY:
 		return -EROFS;
+	case ERROR_NLINKS_EXCEEDED:
+		return -EMLINK;
 	default:
 		return -EIO;
 	}

@@ -38,6 +38,10 @@ ErrorCode FileLinker::linkFile(const Ino parentInodeNumber, const std::string &n
 	{
 		return err;
 	}
+	if (targetInode.i_nlinks == std::numeric_limits<uint16_t>::max())
+	{
+		return ERROR_NLINKS_EXCEEDED;
+	}
 	targetInode.i_nlinks++;
 	err = inodeWriter->writeInode(targetInodeNumber, &targetInode);
 	if (err != SUCCESS)
@@ -47,6 +51,10 @@ ErrorCode FileLinker::linkFile(const Ino parentInodeNumber, const std::string &n
 	err = dirWriter->addDirEntry(parentInodeNumber, targetInodeNumber, name, existingEntryIndex);
 	if (err != SUCCESS)
 	{
+		if (targetInode.i_nlinks == 0)
+		{
+			return ERROR_FS_BROKEN;
+		}
 		targetInode.i_nlinks--;
 		inodeWriter->writeInode(targetInodeNumber, &targetInode);
 		return err;

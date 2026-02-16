@@ -148,6 +148,10 @@ ErrorCode FileRenamer::rename(Ino srcParentInodeNumber, const std::string &srcNa
 	{
 		return ERROR_NAME_LENGTH_EXCEEDED;
 	}
+	if (srcInode.i_nlinks == std::numeric_limits<uint16_t>::max())
+	{
+		return ERROR_NLINKS_EXCEEDED;
+	}
 	srcInode.i_nlinks++;
 	err = inodeWriter->writeInode(srcInodeNumber, &srcInode);
 	if (err != SUCCESS)

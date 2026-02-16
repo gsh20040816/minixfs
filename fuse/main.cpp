@@ -204,7 +204,13 @@ static int fs_create(const char *path, mode_t mode, fuse_file_info *fi)
 	FS &fs = g_FileSystem;
 	ErrorCode err;
 	auto [parentPath, name] = splitPathIntoDirAndBase(path);
-	Ino newInodeNumber = fs.createFile(parentPath, name, mode, fuse_get_context()->uid, fuse_get_context()->gid, err);
+	uid_t uid = fuse_get_context()->uid;
+	uid_t gid = fuse_get_context()->gid;
+	if (uid > std::numeric_limits<uint16_t>::max() || gid > std::numeric_limits<uint16_t>::max())
+	{
+		return -EOVERFLOW;
+	}
+	Ino newInodeNumber = fs.createFile(parentPath, name, mode, uid, gid, err);
 	if (err != SUCCESS)
 	{
 		return errorCodeToInt(err);
@@ -297,7 +303,13 @@ static int fs_mkdir(const char *path, mode_t mode)
 {
 	Logger::log(std::string("mkdir called for path: ") + path, LOG_DEBUG);
 	FS &fs = g_FileSystem;
-	ErrorCode err = fs.mkdir(path, mode, fuse_get_context()->uid, fuse_get_context()->gid);
+	uid_t uid = fuse_get_context()->uid;
+	uid_t gid = fuse_get_context()->gid;
+	if (uid > std::numeric_limits<uint16_t>::max() || gid > std::numeric_limits<uint16_t>::max())
+	{
+		return -EOVERFLOW;
+	}
+	ErrorCode err = fs.mkdir(path, mode, uid, gid);
 	if (err != SUCCESS)
 	{
 		return errorCodeToInt(err);
@@ -415,7 +427,13 @@ static int fs_symlink(const char *target, const char *linkpath)
 	Logger::log(std::string("symlink called with target: ") + target + " and linkpath: " + linkpath, LOG_DEBUG);
 	FS &fs = g_FileSystem;
 	ErrorCode err;
-	Ino newInodeNumber = fs.createSymlink(target, linkpath, 0777, fuse_get_context()->uid, fuse_get_context()->gid, err);
+	uid_t uid = fuse_get_context()->uid;
+	uid_t gid = fuse_get_context()->gid;
+	if (uid > std::numeric_limits<uint16_t>::max() || gid > std::numeric_limits<uint16_t>::max())
+	{
+		return -EOVERFLOW;
+	}
+	Ino newInodeNumber = fs.createSymlink(target, linkpath, 0777, uid, gid, err);
 	if (err != SUCCESS)
 	{
 		return errorCodeToInt(err);

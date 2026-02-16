@@ -70,6 +70,10 @@ ErrorCode FileDeleter::unlinkFile(Ino parentInodeNumber, uint32_t idx)
 	{
 		return err;
 	}
+	if (inode.i_nlinks == 0)
+	{
+		return ERROR_FS_BROKEN;
+	}
 	inode.i_nlinks--;
 	err = inodeWriter->writeInode(inodeNumber, &inode);
 	if (err != SUCCESS)
