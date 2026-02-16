@@ -15,6 +15,7 @@ struct Allocator
 	uint32_t totalBlocks;
 	uint32_t blockSize;
 	uint32_t bitsPerBlock;
+	uint32_t lstAllocated;
 	bool isInTransaction = false;
 	uint8_t *bmapCache = nullptr;
 	uint8_t *isDirtyBlock = nullptr;

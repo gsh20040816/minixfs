@@ -34,6 +34,7 @@ ErrorCode Allocator::init(uint32_t bmapStartBlock, uint32_t totalBmaps, uint32_t
 	this->bmapStartBlock = bmapStartBlock;
 	this->totalBmaps = totalBmaps;
 	this->firstFreeBmap = firstFreeBmap;
+	this->lstAllocated = firstFreeBmap;
 	this->blockSize = blockSize;
 	this->bitsPerBlock = blockSize * sizeof(uint8_t) * 8;
 	this->totalBlocks = (totalBmaps - firstFreeBmap + 1 + this->bitsPerBlock - 1) / this->bitsPerBlock;
@@ -153,12 +154,22 @@ bool Allocator::setBit(uint32_t idx, bool value)
 
 uint32_t Allocator::allocateBmap(ErrorCode &outError)
 {
-	for(uint32_t i = firstFreeBmap; i < totalBmaps; i++)
+	for(uint32_t i = lstAllocated; true; )
 	{
 		if (setBit(i, true))
 		{
 			outError = SUCCESS;
+			lstAllocated = i;
 			return i;
+		}
+		i++;
+		if (i >= totalBmaps)
+		{
+			i = firstFreeBmap;
+		}
+		if (i == lstAllocated)
+		{
+			break;
 		}
 	}
 	outError = ERROR_CANNOT_ALLOCATE_BMAP;
