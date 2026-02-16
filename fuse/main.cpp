@@ -347,6 +347,14 @@ static int fs_chown(const char *path, uid_t uid, gid_t gid, fuse_file_info *fi)
 	FS &fs = g_FileSystem;
 	bool updateUID = uid != static_cast<uid_t>(-1);
 	bool updateGID = gid != static_cast<gid_t>(-1);
+	if (updateUID && uid > std::numeric_limits<uint16_t>::max())
+	{
+		return -EOVERFLOW;
+	}
+	if (updateGID && gid > std::numeric_limits<uint16_t>::max())
+	{
+		return -EOVERFLOW;
+	}
 	ErrorCode err = fs.chown(path, static_cast<uint16_t>(uid), static_cast<uint16_t>(gid), updateUID, updateGID);
 	if (err != SUCCESS)
 	{
@@ -511,6 +519,7 @@ int main(int argc, char **argv)
 	}
 	struct fuse_operations fs_oper = makeFsOperations();
 	int ret = fuse_main(args.argc, args.argv, &fs_oper, nullptr);
+	fuse_opt_add_arg(&args, "-s");
 	fuse_opt_free_args(&args);
 	return ret;
 }
