@@ -86,17 +86,27 @@ ErrorCode TransactionManager::commitTransaction()
 		return ERROR_IS_NOT_IN_TRANSACTION;
 	}
 	ErrorCode err;
-	err = blockDevice->commitTransaction();
-	if (err != SUCCESS)
-	{
-		return setWriteLock(err);
-	}
 	err = imapAllocator->commitTransaction();
 	if (err != SUCCESS)
 	{
 		return setWriteLock(err);
 	}
 	err = zmapAllocator->commitTransaction();
+	if (err != SUCCESS)
+	{
+		return setWriteLock(err);
+	}
+	err = imapAllocator->sync();
+	if (err != SUCCESS)
+	{
+		return setWriteLock(err);
+	}
+	err = zmapAllocator->sync();
+	if (err != SUCCESS)
+	{
+		return setWriteLock(err);
+	}
+	err = blockDevice->commitTransaction();
 	if (err != SUCCESS)
 	{
 		return setWriteLock(err);

@@ -205,14 +205,14 @@ ErrorCode Allocator::commitTransaction()
 	{
 		return ERROR_FS_BROKEN;
 	}
-	isInTransaction = false;
 	for (const auto& [idx, state] : transactionDirtyBlocks)
 	{
 		bmapCache[idx] = state;
 		isDirtyBlock[idx / blockSize] = 1;
 	}
 	transactionDirtyBlocks.clear();
-	return sync();
+	isInTransaction = false;
+	return SUCCESS;
 }
 
 uint32_t Allocator::getAllocatedCount() const
