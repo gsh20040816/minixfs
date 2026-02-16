@@ -1,6 +1,7 @@
 #include "AttributeUpdater.h"
 #include "Inode.h"
 #include <sys/stat.h>
+#include <ctime>
 
 void AttributeUpdater::setInodeReader(InodeReader &inodeReader)
 {
@@ -21,6 +22,7 @@ ErrorCode AttributeUpdater::chmod(Ino inodeNumber, uint16_t mode)
 		return err;
 	}
 	inode.i_mode = (inode.i_mode & S_IFMT) | (mode & ~S_IFMT);
+	inode.i_ctime = static_cast<uint32_t>(time(nullptr));
 	return inodeWriter->writeInode(inodeNumber, &inode);
 }
 
@@ -40,6 +42,7 @@ ErrorCode AttributeUpdater::chown(Ino inodeNumber, uint16_t uid, uint16_t gid, b
 	{
 		inode.i_gid = gid;
 	}
+	inode.i_ctime = static_cast<uint32_t>(time(nullptr));
 	return inodeWriter->writeInode(inodeNumber, &inode);
 }
 
@@ -59,5 +62,6 @@ ErrorCode AttributeUpdater::utimens(Ino inodeNumber, uint32_t atime, uint32_t mt
 	{
 		inode.i_mtime = mtime;
 	}
+	inode.i_ctime = static_cast<uint32_t>(time(nullptr));
 	return inodeWriter->writeInode(inodeNumber, &inode);
 }

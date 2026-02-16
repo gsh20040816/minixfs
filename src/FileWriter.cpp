@@ -1,5 +1,6 @@
 #include "FileWriter.h"
 #include <cstring>
+#include <ctime>
 
 void FileWriter::setBlockDevice(BlockDevice &blockDevice)
 {
@@ -81,6 +82,8 @@ ErrorCode FileWriter::writeFile(Ino inodeNumber, const uint8_t *data, uint32_t o
 		}
 	}
 	inodeForMap.i_size = std::max(inodeForMap.i_size, offset + sizeToWrite);
+	inodeForMap.i_mtime = static_cast<uint32_t>(time(nullptr));
+	inodeForMap.i_ctime = inodeForMap.i_mtime;
 	err = inodeWriter->writeInode(inodeNumber, &inodeForMap);
 	if (err != SUCCESS)
 	{
@@ -153,5 +156,7 @@ ErrorCode FileWriter::truncateFile(Ino inodeNumber, uint32_t newSize)
 		}
 	}
 	inode.i_size = newSize;
+	inode.i_mtime = static_cast<uint32_t>(time(nullptr));
+	inode.i_ctime = inode.i_mtime;
 	return inodeWriter->writeInode(inodeNumber, &inode);
 }
