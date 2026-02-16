@@ -391,6 +391,21 @@ static int fs_symlink(const char *target, const char *linkpath)
 	return 0;
 }
 
+static int fs_mknod(const char *path, mode_t mode, dev_t rdev)
+{
+	Logger::log(std::string("mknod called for path: ") + path + ", mode: " + std::to_string(mode) + ", rdev: " + std::to_string(rdev), LOG_DEBUG);
+	FS &fs = g_FileSystem;
+	if (S_ISREG(mode))
+	{
+		fuse_file_info fi = {};
+		return fs_create(path, mode, &fi);
+	}
+	else
+	{
+		return -ENOSYS;
+	}
+}
+
 static struct fuse_operations makeFsOperations()
 {
 	struct fuse_operations ops = {};
@@ -420,6 +435,7 @@ static struct fuse_operations makeFsOperations()
 	ops.chown = fs_chown;
 	ops.utimens = fs_utimens;
 	ops.symlink = fs_symlink;
+	ops.mknod = fs_mknod;
 	return ops;
 }
 
