@@ -119,6 +119,7 @@ ErrorCode FileWriter::truncateFile(Ino inodeNumber, uint32_t newSize)
 			}
 			inode.i_size += allocSize;
 		}
+		return SUCCESS;
 	}
 	err = inodeWriter->writeInode(inodeNumber, &inode);
 	if (err != SUCCESS)
