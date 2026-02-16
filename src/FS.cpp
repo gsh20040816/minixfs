@@ -417,29 +417,29 @@ ErrorCode FS::openFile(const std::string &path, Ino &outInodeNumber, uint32_t fl
 
 ErrorCode FS::closeFile(Ino inodeNumber)
 {
-	ErrorCode err = g_TransactionManager.beginTransaction();
-	if (err != SUCCESS)
-	{
-		return err;
-	}
 	g_FileCounter.remove(inodeNumber);
 	MinixInode3 inode;
-	err = g_InodeReader.readInode(inodeNumber, &inode);
+	ErrorCode err = g_InodeReader.readInode(inodeNumber, &inode);
 	if (err != SUCCESS)
 	{
-		g_TransactionManager.revertTransaction();
 		return err;
 	}
 	if (inode.i_nlinks == 0 && g_FileCounter.empty(inodeNumber))
 	{
+		err = g_TransactionManager.beginTransaction();
+		if (err != SUCCESS)
+		{
+			return err;
+		}
 		err = g_FileDeleter.deleteFile(inodeNumber);
 		if (err != SUCCESS)
 		{
 			g_TransactionManager.revertTransaction();
 			return err;
 		}
+		return g_TransactionManager.commitTransaction();
 	}
-	return g_TransactionManager.commitTransaction();
+	return SUCCESS;
 }
 
 ErrorCode FS::linkFile(const std::string &existingPath, const std::string &newPath)
