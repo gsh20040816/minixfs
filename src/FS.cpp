@@ -120,6 +120,9 @@ ErrorCode FS::mount()
 	g_DirCreator.setFileCreator(g_FileCreator);
 	g_DirCreator.setFileLinker(g_FileLinker);
 
+	g_SymlinkCreator.setFileCreator(g_FileCreator);
+	g_SymlinkCreator.setFileWriter(g_FileWriter);
+
 	g_AttributeUpdater.setInodeReader(g_InodeReader);
 	g_AttributeUpdater.setInodeWriter(g_InodeWriter);
 
@@ -240,6 +243,17 @@ Ino FS::createFile(const std::string &path, const std::string &name, uint16_t mo
 		return 0;
 	}
 	return newInodeNumber;
+}
+
+Ino FS::createSymlink(const std::string &target, const std::string &path, uint16_t mode, uint16_t uid, uint16_t gid, ErrorCode &outError)
+{
+	auto [parentPath, name] = splitPathIntoDirAndBase(path);
+	Ino parentInodeNumber = g_PathResolver.resolvePath(parentPath, outError);
+	if (outError != SUCCESS)
+	{
+		return 0;
+	}
+	return g_SymlinkCreator.createSymlink(parentInodeNumber, name, target, mode, uid, gid, outError);
 }
 
 ErrorCode FS::truncateFile(const std::string &path, uint32_t newSize)

@@ -378,6 +378,19 @@ static int fs_utimens(const char *path, const struct timespec tv[2], fuse_file_i
 	return 0;
 }
 
+static int fs_symlink(const char *target, const char *linkpath)
+{
+	Logger::log(std::string("symlink called with target: ") + target + " and linkpath: " + linkpath, LOG_DEBUG);
+	FS &fs = g_FileSystem;
+	ErrorCode err;
+	Ino newInodeNumber = fs.createSymlink(target, linkpath, 0777, fuse_get_context()->uid, fuse_get_context()->gid, err);
+	if (err != SUCCESS)
+	{
+		return errorCodeToInt(err);
+	}
+	return 0;
+}
+
 static struct fuse_operations makeFsOperations()
 {
 	struct fuse_operations ops = {};
@@ -406,6 +419,7 @@ static struct fuse_operations makeFsOperations()
 	ops.chmod = fs_chmod;
 	ops.chown = fs_chown;
 	ops.utimens = fs_utimens;
+	ops.symlink = fs_symlink;
 	return ops;
 }
 

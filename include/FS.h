@@ -21,6 +21,7 @@
 #include "DirDeleter.h"
 #include "PathResolver.h"
 #include "LinkReader.h"
+#include "SymlinkCreator.h"
 #include "Allocator.h"
 #include "AttributeUpdater.h"
 #include <string>
@@ -45,6 +46,7 @@ private:
 	DirWriter g_DirWriter;
 	LinkReader g_LinkReader;
 	PathResolver g_PathResolver;
+	SymlinkCreator g_SymlinkCreator;
 	Allocator g_imapAllocator;
 	Allocator g_zmapAllocator;
 	FileCounter g_FileCounter;
@@ -79,6 +81,7 @@ public:
 	ErrorCode linkFile(const std::string &existingPath, const std::string &newPath);
 	ErrorCode unlinkFile(const std::string &path);
 	Ino createFile(const std::string &path, const std::string &name, uint16_t mode, uint16_t uid, uint16_t gid, ErrorCode &outError);
+	Ino createSymlink(const std::string &target, const std::string &path, uint16_t mode, uint16_t uid, uint16_t gid, ErrorCode &outError);
 	ErrorCode truncateFile(const std::string &path, uint32_t newSize);
 	ErrorCode truncateFile(Ino inodeNumber, uint32_t newSize);
 	ErrorCode renameFile(const std::string &from, const std::string &to, bool failIfDstExists);
