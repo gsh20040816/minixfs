@@ -336,10 +336,10 @@ ErrorCode FS::truncateFile(Ino inodeNumber, uint32_t newSize)
 		g_TransactionManager.revertTransaction();
 		return err;
 	}
-	outError = g_TransactionManager.commitTransaction();
-	if (outError != SUCCESS)
+	err = g_TransactionManager.commitTransaction();
+	if (err != SUCCESS)
 	{
-		return outError;
+		return err;
 	}
 	return SUCCESS;
 }
