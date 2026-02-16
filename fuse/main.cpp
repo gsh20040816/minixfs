@@ -511,7 +511,6 @@ int main(int argc, char **argv)
 	}
 	struct fuse_operations fs_oper = makeFsOperations();
 	int ret = fuse_main(args.argc, args.argv, &fs_oper, nullptr);
-	fs.unmount();
 	fuse_opt_free_args(&args);
 	return ret;
 }
