@@ -394,7 +394,18 @@ ErrorCode FS::openFile(const std::string &path, Ino &outInodeNumber, uint32_t fl
 	}
 	if (flags & O_TRUNC)
 	{
+		err = g_TransactionManager.beginTransaction();
+		if (err != SUCCESS)
+		{
+			return err;
+		}
 		err = g_FileWriter.truncateFile(outInodeNumber, 0);
+		if (err != SUCCESS)
+		{
+			g_TransactionManager.revertTransaction();
+			return err;
+		}
+		err = g_TransactionManager.commitTransaction();
 		if (err != SUCCESS)
 		{
 			return err;
