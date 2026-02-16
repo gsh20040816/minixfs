@@ -168,7 +168,7 @@ ErrorCode BlockDevice::writeZone(uint32_t zoneNumber, const void* buffer)
 	return writeBytes(offset, buffer, zoneSize);
 }
 
-ErrorCode BlockDevice::startTransaction()
+ErrorCode BlockDevice::beginTransaction()
 {
 	if (isInTransaction)
 	{

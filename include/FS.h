@@ -22,6 +22,7 @@
 #include "PathResolver.h"
 #include "LinkReader.h"
 #include "SymlinkCreator.h"
+#include "TransactionManager.h"
 #include "Allocator.h"
 #include "AttributeUpdater.h"
 #include <string>
@@ -56,6 +57,7 @@ private:
 	DirCreator g_DirCreator;
 	DirDeleter g_DirDeleter;
 	AttributeUpdater g_AttributeUpdater;
+	TransactionManager g_TransactionManager;
 public:
 	FS();
 	FS(const std::string &devicePath);

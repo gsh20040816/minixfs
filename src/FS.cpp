@@ -143,6 +143,10 @@ ErrorCode FS::mount()
 	}
 	g_FileMapper.setZmapAllocator(g_zmapAllocator);
 
+	g_TransactionManager.setBlockDevice(bd);
+	g_TransactionManager.setImapAllocator(g_imapAllocator);
+	g_TransactionManager.setZmapAllocator(g_zmapAllocator);
+
 	return SUCCESS;
 }
 

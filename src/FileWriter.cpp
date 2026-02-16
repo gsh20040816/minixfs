@@ -39,18 +39,6 @@ ErrorCode FileWriter::writeFile(Ino inodeNumber, const uint8_t *data, uint32_t o
 		return err;
 	}
 
-	err = blockDevice->startTransaction();
-	if (err != SUCCESS)
-	{
-		return err;
-	}
-	err = fileMapper->zmapAllocator->beginTransaction();
-	if (err != SUCCESS)
-	{
-		blockDevice->revertTransaction();
-		return err;
-	}
-
 	Zno startZoneIndex = offset / layout->zoneSize;
 	Zno endZoneIndex = (offset + sizeToWrite - 1) / layout->zoneSize;
 	for (Zno zoneIndex = startZoneIndex; zoneIndex <= endZoneIndex; zoneIndex++)
@@ -59,8 +47,6 @@ ErrorCode FileWriter::writeFile(Ino inodeNumber, const uint8_t *data, uint32_t o
 		ErrorCode err = fileMapper->mapLogicalToPhysical(inodeForMap, zoneIndex, physicalZoneIndex, true);
 		if (err != SUCCESS)
 		{
-			fileMapper->zmapAllocator->revertTransaction();
-			blockDevice->revertTransaction();
 			return err;
 		}
 		uint32_t writeSize = zoneIndex == startZoneIndex ? std::min(sizeToWrite, layout->zoneSize - (offset % layout->zoneSize)) : zoneIndex == endZoneIndex ? (offset + sizeToWrite - 1) % layout->zoneSize + 1 : layout->zoneSize;
@@ -69,8 +55,6 @@ ErrorCode FileWriter::writeFile(Ino inodeNumber, const uint8_t *data, uint32_t o
 			err = blockDevice->writeZone(physicalZoneIndex, data + (zoneIndex - startZoneIndex) * layout->zoneSize - (offset % layout->zoneSize));
 			if (err != SUCCESS)
 			{
-				fileMapper->zmapAllocator->revertTransaction();
-				blockDevice->revertTransaction();
 				return err;
 			}
 		}
@@ -79,15 +63,11 @@ ErrorCode FileWriter::writeFile(Ino inodeNumber, const uint8_t *data, uint32_t o
 			uint8_t *zoneBuffer = static_cast<uint8_t *>(malloc(layout->zoneSize));
 			if (zoneBuffer == nullptr)
 			{
-				fileMapper->zmapAllocator->revertTransaction();
-				blockDevice->revertTransaction();
 				return ERROR_CANNOT_ALLOCATE_MEMORY;
 			}
 			err = blockDevice->readZone(physicalZoneIndex, zoneBuffer);
 			if (err != SUCCESS)
 			{
-				fileMapper->zmapAllocator->revertTransaction();
-				blockDevice->revertTransaction();
 				free(zoneBuffer);
 				return err;
 			}
@@ -96,8 +76,6 @@ ErrorCode FileWriter::writeFile(Ino inodeNumber, const uint8_t *data, uint32_t o
 			free(zoneBuffer);
 			if (err != SUCCESS)
 			{
-				fileMapper->zmapAllocator->revertTransaction();
-				blockDevice->revertTransaction();
 				return err;
 			}
 		}
@@ -106,12 +84,8 @@ ErrorCode FileWriter::writeFile(Ino inodeNumber, const uint8_t *data, uint32_t o
 	err = inodeWriter->writeInode(inodeNumber, &inodeForMap);
 	if (err != SUCCESS)
 	{
-		fileMapper->zmapAllocator->revertTransaction();
-		blockDevice->revertTransaction();
-		return err;
+		return err;`
 	}
-	fileMapper->zmapAllocator->commitTransaction();
-	blockDevice->commitTransaction();
 	return SUCCESS;
 }
 

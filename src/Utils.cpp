@@ -111,6 +111,8 @@ int errorCodeToInt(ErrorCode code)
 		return -EINVAL;
 	case ERROR_LINK_DIRECTORY:
 		return -EPERM;
+	case ERROR_IS_NOT_IN_TRANSACTION:
+		return -EIO;
 	default:
 		return -EIO;
 	}
