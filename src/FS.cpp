@@ -308,7 +308,7 @@ ErrorCode FS::truncateFile(Ino inodeNumber, uint32_t newSize)
 		return err;
 	}
 	MinixInode3 inode;
-	ErrorCode err = g_InodeReader.readInode(inodeNumber, &inode);
+	err = g_InodeReader.readInode(inodeNumber, &inode);
 	if (err != SUCCESS)
 	{
 		g_TransactionManager.revertTransaction();

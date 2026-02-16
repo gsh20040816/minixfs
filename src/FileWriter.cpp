@@ -84,7 +84,7 @@ ErrorCode FileWriter::writeFile(Ino inodeNumber, const uint8_t *data, uint32_t o
 	err = inodeWriter->writeInode(inodeNumber, &inodeForMap);
 	if (err != SUCCESS)
 	{
-		return err;`
+		return err;
 	}
 	return SUCCESS;
 }
