@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <map>
+#include <set>
 #include "BlockDevice.h"
 #include "Layout.h"
 #include "Errors.h"
@@ -18,8 +19,8 @@ struct Allocator
 	uint32_t lstAllocated;
 	bool isInTransaction = false;
 	uint8_t *bmapCache = nullptr;
-	uint8_t *isDirtyBlock = nullptr;
 	std::map<uint32_t, uint8_t> transactionDirtyBlocks;
+	std::set<Bno> dirtyBlockSet;
 	bool setBit(uint32_t idx, bool value);
 
 	Allocator();

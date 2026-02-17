@@ -4,7 +4,7 @@ Allocator::Allocator() {}
 
 Allocator::~Allocator()
 {
-	if (blockDevice != nullptr && bmapCache != nullptr && isDirtyBlock != nullptr)
+	if (blockDevice != nullptr && bmapCache != nullptr)
 	{
 		sync();
 	}
@@ -12,11 +12,6 @@ Allocator::~Allocator()
 	{
 		free(bmapCache);
 		bmapCache = nullptr;
-	}
-	if (isDirtyBlock != nullptr)
-	{
-		free(isDirtyBlock);
-		isDirtyBlock = nullptr;
 	}
 }
 
@@ -50,13 +45,6 @@ ErrorCode Allocator::init(uint32_t bmapStartBlock, uint32_t totalBmaps, uint32_t
 		bmapCache = nullptr;
 		return err;
 	}
-	this->isDirtyBlock = static_cast<uint8_t*>(calloc(totalBlocks, sizeof(uint8_t)));
-	if (isDirtyBlock == nullptr)
-	{
-		free(bmapCache);
-		bmapCache = nullptr;
-		return ERROR_CANNOT_ALLOCATE_MEMORY;
-	}
 	return SUCCESS;
 }
 
@@ -66,18 +54,15 @@ ErrorCode Allocator::sync()
 	{
 		return ERROR_IS_IN_TRANSACTION;
 	}
-	for (uint32_t i = 0; i < totalBlocks; i++)
+	for (Bno i : dirtyBlockSet)
 	{
-		if (isDirtyBlock[i])
+		ErrorCode err = blockDevice->writeBlock(bmapStartBlock + i, bmapCache + i * blockSize);
+		if (err != SUCCESS)
 		{
-			ErrorCode err = blockDevice->writeBlock(bmapStartBlock + i, bmapCache + i * blockSize);
-			if (err != SUCCESS)
-			{
-				return err;
-			}
-			isDirtyBlock[i] = 0;
+			return err;
 		}
 	}
+	dirtyBlockSet.clear();
 	return SUCCESS;
 }
 
@@ -148,7 +133,7 @@ bool Allocator::setBit(uint32_t idx, bool value)
 	{
 		byte &= ~bitMask;
 	}
-	isDirtyBlock[block] = 1;
+	dirtyBlockSet.insert(block);
 	return true;
 }
 
@@ -219,7 +204,7 @@ ErrorCode Allocator::commitTransaction()
 	for (const auto& [idx, state] : transactionDirtyBlocks)
 	{
 		bmapCache[idx] = state;
-		isDirtyBlock[idx / blockSize] = 1;
+		dirtyBlockSet.insert(idx / blockSize);
 	}
 	transactionDirtyBlocks.clear();
 	isInTransaction = false;
