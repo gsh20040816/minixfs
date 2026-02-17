@@ -21,7 +21,7 @@ struct FileMapper
 	void setBlocksPerZone(uint32_t blocksPerZone);
 	void setBlockSize(uint32_t blockSize);
 	void setZmapAllocator(Allocator &zmapAllocator);
-	ErrorCode mapLogicalToPhysical(MinixInode3 &inode, Zno logicalZoneIndex, Zno &outPhysicalZoneIndex, bool allocateIfNotMapped = false, bool freeIfMapped = false);
+	ErrorCode mapLogicalToPhysical(MinixInode3 &inode, Zno logicalZoneIndex, Zno &outPhysicalZoneIndex, bool allocateIfNotMapped = false, bool freeIfMapped = false, bool allocateWriteZero = true);
 	ErrorCode freeLogicalZone(MinixInode3 &inode, Zno logicalZoneIndex);
 	bool isIndirectBlockEmpty(const IndirectBlock &block) const;
 };

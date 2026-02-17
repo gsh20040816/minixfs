@@ -44,7 +44,7 @@ bool FileMapper::isIndirectBlockEmpty(const IndirectBlock &block) const
 	return true;
 }
 
-ErrorCode FileMapper::mapLogicalToPhysical(MinixInode3 &inode, Zno logicalZoneIndex, Zno &outPhysicalZoneIndex, bool allocateIfNotMapped, bool freeIfMapped)
+ErrorCode FileMapper::mapLogicalToPhysical(MinixInode3 &inode, Zno logicalZoneIndex, Zno &outPhysicalZoneIndex, bool allocateIfNotMapped, bool freeIfMapped, bool allocateWriteZero)
 {
 	if (blockDevice == nullptr || zonesPerIndirectBlock == 0 || blocksPerZone == 0)
 	{
@@ -62,7 +62,10 @@ ErrorCode FileMapper::mapLogicalToPhysical(MinixInode3 &inode, Zno logicalZoneIn
 		{
 			return err;
 		}
-		err = blockDevice->writeZone(outZone, std::vector<uint8_t>(blocksPerZone * blockSize, 0).data());
+		if (allocateWriteZero)
+		{
+			err = blockDevice->writeZone(outZone, std::vector<uint8_t>(blocksPerZone * blockSize, 0).data());
+		}
 		return err;
 	};
 	auto initIndirectBlock = [&](Zno zoneNumber) -> ErrorCode
