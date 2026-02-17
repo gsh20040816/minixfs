@@ -40,12 +40,6 @@ static int fs_getattr(const char *path, struct stat *st, fuse_file_info *fi)
 static int fs_flush(const char *path, fuse_file_info *fi)
 {
 	Logger::log(std::string("flush called for path: ") + path, LOG_DEBUG);
-	FS &fs = g_FileSystem;
-	ErrorCode err = fs.fsync(true);
-	if (err != SUCCESS)
-	{
-		return errorCodeToInt(err);
-	}
 	return 0;
 }
 
