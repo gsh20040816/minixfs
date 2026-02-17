@@ -106,8 +106,6 @@ ErrorCode FileWriter::truncateFile(Ino inodeNumber, uint32_t newSize)
 	}
 	if (newSize > inode.i_size)
 	{
-		Zno lastZoneIndex = (inode.i_size - 1) / layout->zoneSize;
-		Zno newLastZoneIndex = (newSize - 1) / layout->zoneSize;
 		if (inode.i_size % layout->zoneSize != 0)
 		{
 			uint32_t writeSize = std::min(layout->zoneSize - (inode.i_size % layout->zoneSize), newSize - inode.i_size);
