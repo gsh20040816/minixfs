@@ -3,7 +3,7 @@
 #include <string>
 #include <cstdint>
 #include <vector>
-#include <unordered_map>
+#include <map>
 #include "Errors.h"
 #include "Type.h"
 
@@ -15,7 +15,7 @@ private:
 	uint16_t blockSize;
 	uint32_t zoneSize;
 	bool isInTransaction;
-	std::unordered_map<Bno, std::vector<uint8_t>> transactionWrites;
+	std::map<Bno, std::vector<uint8_t>> transactionWrites;
 	const int MAX_READ_RETRIES = 3;
 public:
 	BlockDevice();
