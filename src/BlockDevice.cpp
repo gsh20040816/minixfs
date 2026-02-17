@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include "Type.h"
 #include "Errors.h"
+#include "Constants.h"
 
 BlockDevice::BlockDevice(): devicePath(""), fd(-1), isInTransaction(false) {}
 BlockDevice::BlockDevice(const std::string &path): devicePath(path), fd(-1), isInTransaction(false) {}
@@ -223,9 +224,33 @@ ErrorCode BlockDevice::commitTransaction()
 		return ERROR_FS_BROKEN;
 	}
 	isInTransaction = false;
+	static uint8_t writeBuffer[ONETIME_MAX_WRITE_SIZE];
+	uint32_t bufferOffset = 0;
+	Bno startBlock = std::numeric_limits<Bno>::max();
+	Bno lstBlock = startBlock;
 	for (const auto& [blockNumber, data] : transactionWrites)
 	{
-		ErrorCode err = writeBlock(blockNumber, data.data());
+		if (bufferOffset + blockSize > ONETIME_MAX_WRITE_SIZE || blockNumber != lstBlock + 1)
+		{
+			if (bufferOffset > 0)
+			{
+				ErrorCode err = writeBytes(static_cast<uint64_t>(startBlock) * blockSize, writeBuffer, bufferOffset);
+				if (err != SUCCESS)
+				{
+					isInTransaction = true;
+					return err;
+				}
+			}
+			bufferOffset = 0;
+			startBlock = blockNumber;
+		}
+		std::memcpy(writeBuffer + bufferOffset, data.data(), blockSize);
+		bufferOffset += blockSize;
+		lstBlock = blockNumber;
+	}
+	if (bufferOffset > 0)
+	{
+		ErrorCode err = writeBytes(static_cast<uint64_t>(startBlock) * blockSize, writeBuffer, bufferOffset);
 		if (err != SUCCESS)
 		{
 			isInTransaction = true;
