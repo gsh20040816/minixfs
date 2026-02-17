@@ -106,21 +106,30 @@ ErrorCode FileWriter::truncateFile(Ino inodeNumber, uint32_t newSize)
 	}
 	if (newSize > inode.i_size)
 	{
-		while (inode.i_size < newSize)
+		Zno lastZoneIndex = (inode.i_size - 1) / layout->zoneSize;
+		Zno newLastZoneIndex = (newSize - 1) / layout->zoneSize;
+		if (inode.i_size % layout->zoneSize != 0)
 		{
-			uint32_t allocSize = std::min(static_cast<uint32_t>(newSize - inode.i_size), static_cast<uint32_t>(MAX_ALLOC_MEMORY_SIZE));
-			uint8_t *zeroBuffer = static_cast<uint8_t *>(calloc(1, allocSize));
+			uint32_t writeSize = std::min(layout->zoneSize - (inode.i_size % layout->zoneSize), newSize - inode.i_size);
+			uint8_t *zeroBuffer = static_cast<uint8_t *>(calloc(1, writeSize));
 			if (zeroBuffer == nullptr)
 			{
 				return ERROR_CANNOT_ALLOCATE_MEMORY;
 			}
-			err = writeFile(inodeNumber, zeroBuffer, inode.i_size, allocSize);
+			err = writeFile(inodeNumber, zeroBuffer, inode.i_size, writeSize);
 			free(zeroBuffer);
 			if (err != SUCCESS)
 			{
 				return err;
 			}
-			inode.i_size += allocSize;
+		}
+		inode.i_size = newSize;
+		inode.i_mtime = static_cast<uint32_t>(time(nullptr));
+		inode.i_ctime = inode.i_mtime;
+		err = inodeWriter->writeInode(inodeNumber, &inode);
+		if (err != SUCCESS)
+		{
+			return err;
 		}
 		return SUCCESS;
 	}
