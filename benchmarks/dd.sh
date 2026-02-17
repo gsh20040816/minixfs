@@ -2,103 +2,63 @@
 
 set -euo pipefail
 
-MNT_DIR="${1:-run/mnt}"
-OUT_DIR="${2:-run/benchmarks}"
-REPEAT="${REPEAT:-3}"
+if [[ $# -lt 5 ]]; then
+    echo "Usage: $0 <mount_dir> <mode> <bs> <count> <sample_id> [csv_path]" >&2
+    echo "mode: sync | fdatasync | buffered" >&2
+    exit 1
+fi
 
-RESULT_CSV="${OUT_DIR}/dd_results.csv"
-SUMMARY_TXT="${OUT_DIR}/dd_summary.txt"
-
-CASES=(
-    "64K:16384"
-    "256K:4096"
-    "1M:1024"
-    "4M:256"
-    "16M:64"
-    "64M:16"
-    "256M:4"
-    "1G:1"
-)
-
-MODES=("sync" "fdatasync" "buffered")
-
-mkdir -p "${OUT_DIR}"
+MNT_DIR="$1"
+MODE="$2"
+BS="$3"
+COUNT="$4"
+SAMPLE_ID="$5"
+CSV_PATH="${6:-}"
 
 if ! mountpoint -q "${MNT_DIR}"; then
     echo "Mountpoint is not active: ${MNT_DIR}" >&2
     exit 1
 fi
 
-printf "mode,bs,count,run,seconds,bytes,mib_per_s\n" > "${RESULT_CSV}"
+OUTPUT_FILE="${MNT_DIR}/dd_${MODE}_${BS}_${SAMPLE_ID}.bin"
 
-run_one_case() {
-    local mode="$1"
-    local bs="$2"
-    local count="$3"
-    local run_id="$4"
-    local output_file="${MNT_DIR}/dd_${mode}_${bs}_r${run_id}.bin"
-    local start_ns end_ns seconds bytes mib_per_s
-    local -a dd_args
-
-    dd_args=("if=/dev/zero" "of=${output_file}" "bs=${bs}" "count=${count}" "status=none")
-    case "${mode}" in
-        sync)
-            dd_args+=("oflag=sync")
-            ;;
-        fdatasync)
-            dd_args+=("conv=fdatasync")
-            ;;
-        buffered)
-            ;;
-        *)
-            echo "Unknown mode: ${mode}" >&2
-            exit 1
-            ;;
-    esac
-
-    start_ns=$(date +%s%N)
-    dd "${dd_args[@]}"
-    end_ns=$(date +%s%N)
-
-    bytes=$(stat -c '%s' "${output_file}")
-    seconds=$(awk -v start="${start_ns}" -v end="${end_ns}" 'BEGIN { printf "%.6f", (end - start) / 1000000000 }')
-    mib_per_s=$(awk -v b="${bytes}" -v s="${seconds}" 'BEGIN { if (s <= 0) { printf "0.00" } else { printf "%.2f", b / 1024 / 1024 / s } }')
-
-    printf "%s,%s,%s,%s,%s,%s,%s\n" "${mode}" "${bs}" "${count}" "${run_id}" "${seconds}" "${bytes}" "${mib_per_s}" >> "${RESULT_CSV}"
-    printf "mode=%-9s bs=%-5s run=%s speed=%8s MiB/s time=%ss\n" "${mode}" "${bs}" "${run_id}" "${mib_per_s}" "${seconds}"
-
-    rm -f "${output_file}"
+cleanup() {
+    rm -f "${OUTPUT_FILE}"
 }
+trap cleanup EXIT INT TERM
 
-echo "Running dd benchmark on ${MNT_DIR} (repeat=${REPEAT})..."
-for mode in "${MODES[@]}"; do
-    for entry in "${CASES[@]}"; do
-        bs="${entry%%:*}"
-        count="${entry##*:}"
-        for ((run_id = 1; run_id <= REPEAT; run_id++)); do
-            run_one_case "${mode}" "${bs}" "${count}" "${run_id}"
-        done
-    done
-done
+declare -a DD_ARGS
+DD_ARGS=("if=/dev/zero" "of=${OUTPUT_FILE}" "bs=${BS}" "count=${COUNT}" "status=none")
 
-{
-    echo "mode,bs,avg_mib_per_s,min_mib_per_s,max_mib_per_s,samples"
-    awk -F',' '
-        NR > 1 {
-            key = $1 "," $2
-            speed = $7 + 0
-            sum[key] += speed
-            cnt[key] += 1
-            if (!(key in min) || speed < min[key]) min[key] = speed
-            if (!(key in max) || speed > max[key]) max[key] = speed
-        }
-        END {
-            for (k in cnt) {
-                printf "%s,%.2f,%.2f,%.2f,%d\n", k, sum[k] / cnt[k], min[k], max[k], cnt[k]
-            }
-        }
-    ' "${RESULT_CSV}" | sort -t',' -k1,1 -k2,2
-} > "${SUMMARY_TXT}"
+case "${MODE}" in
+    sync)
+        DD_ARGS+=("oflag=sync")
+        ;;
+    fdatasync)
+        DD_ARGS+=("conv=fdatasync")
+        ;;
+    buffered)
+        ;;
+    *)
+        echo "Unknown mode: ${MODE}" >&2
+        exit 1
+        ;;
+esac
 
-echo "CSV: ${RESULT_CSV}"
-echo "Summary: ${SUMMARY_TXT}"
+start_ns=$(date +%s%N)
+dd "${DD_ARGS[@]}"
+end_ns=$(date +%s%N)
+
+bytes=$(stat -c '%s' "${OUTPUT_FILE}")
+seconds=$(awk -v start="${start_ns}" -v end="${end_ns}" 'BEGIN { printf "%.6f", (end - start) / 1000000000 }')
+mib_per_s=$(awk -v b="${bytes}" -v s="${seconds}" 'BEGIN { if (s <= 0) { printf "0.00" } else { printf "%.2f", b / 1024 / 1024 / s } }')
+
+printf "sample=%-18s mode=%-9s bs=%-5s speed=%8s MiB/s time=%ss\n" "${SAMPLE_ID}" "${MODE}" "${BS}" "${mib_per_s}" "${seconds}"
+
+if [[ -n "${CSV_PATH}" ]]; then
+    mkdir -p "$(dirname "${CSV_PATH}")"
+    if [[ ! -f "${CSV_PATH}" ]]; then
+        printf "timestamp,mode,bs,count,sample_id,seconds,bytes,mib_per_s\n" > "${CSV_PATH}"
+    fi
+    printf "%s,%s,%s,%s,%s,%s,%s,%s\n" "$(date -Iseconds)" "${MODE}" "${BS}" "${COUNT}" "${SAMPLE_ID}" "${seconds}" "${bytes}" "${mib_per_s}" >> "${CSV_PATH}"
+fi
