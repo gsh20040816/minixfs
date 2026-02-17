@@ -2,18 +2,20 @@
 
 set -euo pipefail
 
-if [[ $# -lt 5 ]]; then
-    echo "Usage: $0 <mount_dir> <mode> <bs> <count> <sample_id> [csv_path]" >&2
+if [[ $# -lt 6 ]]; then
+    echo "Usage: $0 <mount_dir> <backend> <mode> <bs> <count> <sample_id> [csv_path]" >&2
+    echo "backend: fuse | kernel" >&2
     echo "mode: sync | fdatasync | buffered" >&2
     exit 1
 fi
 
 MNT_DIR="$1"
-MODE="$2"
-BS="$3"
-COUNT="$4"
-SAMPLE_ID="$5"
-CSV_PATH="${6:-}"
+BACKEND="$2"
+MODE="$3"
+BS="$4"
+COUNT="$5"
+SAMPLE_ID="$6"
+CSV_PATH="${7:-}"
 
 if ! mountpoint -q "${MNT_DIR}"; then
     echo "Mountpoint is not active: ${MNT_DIR}" >&2
@@ -53,12 +55,12 @@ bytes=$(stat -c '%s' "${OUTPUT_FILE}")
 seconds=$(awk -v start="${start_ns}" -v end="${end_ns}" 'BEGIN { printf "%.6f", (end - start) / 1000000000 }')
 mib_per_s=$(awk -v b="${bytes}" -v s="${seconds}" 'BEGIN { if (s <= 0) { printf "0.00" } else { printf "%.2f", b / 1024 / 1024 / s } }')
 
-printf "sample=%-18s mode=%-9s bs=%-5s speed=%8s MiB/s time=%ss\n" "${SAMPLE_ID}" "${MODE}" "${BS}" "${mib_per_s}" "${seconds}"
+printf "sample=%-18s backend=%-6s mode=%-9s bs=%-5s speed=%8s MiB/s time=%ss\n" "${SAMPLE_ID}" "${BACKEND}" "${MODE}" "${BS}" "${mib_per_s}" "${seconds}"
 
 if [[ -n "${CSV_PATH}" ]]; then
     mkdir -p "$(dirname "${CSV_PATH}")"
     if [[ ! -f "${CSV_PATH}" ]]; then
-        printf "timestamp,mode,bs,count,sample_id,seconds,bytes,mib_per_s\n" > "${CSV_PATH}"
+        printf "timestamp,backend,mode,bs,count,sample_id,seconds,bytes,mib_per_s\n" > "${CSV_PATH}"
     fi
-    printf "%s,%s,%s,%s,%s,%s,%s,%s\n" "$(date -Iseconds)" "${MODE}" "${BS}" "${COUNT}" "${SAMPLE_ID}" "${seconds}" "${bytes}" "${mib_per_s}" >> "${CSV_PATH}"
+    printf "%s,%s,%s,%s,%s,%s,%s,%s,%s\n" "$(date -Iseconds)" "${BACKEND}" "${MODE}" "${BS}" "${COUNT}" "${SAMPLE_ID}" "${seconds}" "${bytes}" "${mib_per_s}" >> "${CSV_PATH}"
 fi
