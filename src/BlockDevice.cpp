@@ -168,6 +168,32 @@ ErrorCode BlockDevice::writeZone(uint32_t zoneNumber, const void* buffer)
 	return writeBytes(offset, buffer, zoneSize);
 }
 
+ErrorCode BlockDevice::fdatasync()
+{
+	if (isInTransaction)
+	{
+		return ERROR_IS_IN_TRANSACTION;
+	}
+	if (::fdatasync(fd) < 0)
+	{
+		return ERROR_WRITE_FAIL;
+	}
+	return SUCCESS;
+}
+
+ErrorCode BlockDevice::fsync()
+{
+	if (isInTransaction)
+	{
+		return ERROR_IS_IN_TRANSACTION;
+	}
+	if (::fsync(fd) < 0)
+	{
+		return ERROR_WRITE_FAIL;
+	}
+	return SUCCESS;
+}
+
 ErrorCode BlockDevice::beginTransaction()
 {
 	if (isInTransaction)

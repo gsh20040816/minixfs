@@ -766,3 +766,29 @@ ErrorCode FS::utimens(const std::string &path, uint32_t atime, uint32_t mtime, b
 	}
 	return g_TransactionManager.commitTransaction();
 }
+
+ErrorCode FS::fsync(bool syncDataOnly)
+{
+	if (g_TransactionManager.isInTransaction)
+	{
+		return ERROR_IS_IN_TRANSACTION;
+	}
+	ErrorCode err = g_imapAllocator.sync();
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	err = g_zmapAllocator.sync();
+	if (err != SUCCESS)
+	{
+		return err;
+	}
+	if (syncDataOnly)
+	{
+		return g_BlockDevice.fdatasync();
+	}
+	else
+	{
+		return g_BlockDevice.fsync();
+	}
+}

@@ -31,6 +31,8 @@ public:
 	ErrorCode writeBytes(uint64_t offset, const void* buffer, size_t size);
 	ErrorCode writeBlock(uint32_t blockNumber, const void* buffer);
 	ErrorCode writeZone(uint32_t zoneNumber, const void* buffer);
+	ErrorCode fdatasync();
+	ErrorCode fsync();
 	ErrorCode beginTransaction();
 	ErrorCode revertTransaction();
 	ErrorCode commitTransaction();
