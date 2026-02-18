@@ -22,3 +22,4 @@
 #define MAX_PATH_DEPTH 256
 #define MINIX3_MAX_FILE_SIZE (std::numeric_limits<uint32_t>::max())
 #define ONETIME_MAX_WRITE_SIZE (1 << 26)
+#define MAX_LOG_ZONE_SIZE 7

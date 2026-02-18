@@ -57,35 +57,21 @@ ErrorCode FileReader::readFile(const MinixInode3 &inode, uint8_t *buffer, uint32
 		}
 		if (zoneIndex == startZoneIndex)
 		{
-			uint8_t *zoneBuffer = static_cast<uint8_t *>(malloc(layout->zoneSize));
-			if (!zoneBuffer)
-			{
-				return ERROR_CANNOT_ALLOCATE_MEMORY;
-			}
 			err = blockDevice->readZone(physicalZoneIndex, zoneBuffer);
 			if (err != SUCCESS)
 			{
-				free(zoneBuffer);
 				return err;
 			}
 			memcpy(buffer, zoneBuffer + (offset % layout->zoneSize), std::min(sizeToRead, layout->zoneSize - (offset % layout->zoneSize)));
-			free(zoneBuffer);
 		}
 		else if (zoneIndex == endZoneIndex)
 		{
-			uint8_t *zoneBuffer = static_cast<uint8_t *>(malloc(layout->zoneSize));
-			if (!zoneBuffer)
-			{
-				return ERROR_CANNOT_ALLOCATE_MEMORY;
-			}
 			err = blockDevice->readZone(physicalZoneIndex, zoneBuffer);
 			if (err != SUCCESS)
 			{
-				free(zoneBuffer);
 				return err;
 			}
 			memcpy(buffer + (zoneIndex - startZoneIndex) * layout->zoneSize - (offset % layout->zoneSize), zoneBuffer, (offset + sizeToRead - 1) % layout->zoneSize + 1);
-			free(zoneBuffer);
 		}
 		else
 		{

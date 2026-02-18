@@ -7,6 +7,7 @@
 
 struct FileReader
 {
+	uint8_t zoneBuffer[MINIX3_MAX_BLOCK_SIZE << MAX_LOG_ZONE_SIZE];
 	BlockDevice *blockDevice;
 	FileMapper *fileMapper;
 	Layout *layout;

@@ -13,7 +13,7 @@ ErrorCode Layout::fromSuperblock(const MinixSuperblock3 &sb)
 	{
 		return ERROR_FS_BROKEN;
 	}
-	if (sb.s_log_zone_size > 7)
+	if (sb.s_log_zone_size > MAX_LOG_ZONE_SIZE)
 	{
 		return ERROR_FS_BROKEN;
 	}
