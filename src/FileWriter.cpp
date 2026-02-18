@@ -45,7 +45,16 @@ ErrorCode FileWriter::writeFile(Ino inodeNumber, const uint8_t *data, uint32_t o
 	for (Zno zoneIndex = startZoneIndex; zoneIndex <= endZoneIndex; zoneIndex++)
 	{
 		Zno physicalZoneIndex;
-		ErrorCode err = fileMapper->mapLogicalToPhysical(inodeForMap, zoneIndex, physicalZoneIndex, true, false, zoneIndex == startZoneIndex || zoneIndex == endZoneIndex);
+		bool writeZero = false;
+		if (zoneIndex == startZoneIndex && (offset % layout->zoneSize) != 0)
+		{
+			writeZero = true;
+		}
+		else if (zoneIndex == endZoneIndex && ((offset + sizeToWrite) % layout->zoneSize) != 0)
+		{
+			writeZero = true;
+		}
+		ErrorCode err = fileMapper->mapLogicalToPhysical(inodeForMap, zoneIndex, physicalZoneIndex, true, false, writeZero);
 		if (err != SUCCESS)
 		{
 			return err;
