@@ -39,9 +39,9 @@ MNT_DIR="${RUN_DIR}/mnt"
 BENCHMARK_TS="${BENCHMARK_TS:-$(date +%Y%m%d_%H%M%S)}"
 OUT_DIR_BASE="${OUT_DIR_BASE:-${RUN_DIR}/benchmarks}"
 OUT_DIR="${OUT_DIR_BASE}_${BENCHMARK_TS}"
-RESULT_CSV="${OUT_DIR}/dd_results.csv"
-SUMMARY_CSV="${OUT_DIR}/dd_summary.csv"
-COMPARE_CSV="${OUT_DIR}/dd_compare.csv"
+RESULT_CSV="${OUT_DIR}/benchmark_results.csv"
+SUMMARY_CSV="${OUT_DIR}/benchmark_summary.csv"
+COMPARE_CSV="${OUT_DIR}/benchmark_compare.csv"
 PLAN_FILE="${OUT_DIR}/run_plan.csv"
 
 INODES="${INODES:-4096}"
@@ -53,7 +53,7 @@ INCLUDE_BUFFERED="${INCLUDE_BUFFERED:-1}"
 INCLUDE_KERNEL_COMPARE="${INCLUDE_KERNEL_COMPARE:-1}"
 SKIP_BUILD="${SKIP_BUILD:-0}"
 
-CASES=(
+SEQ_CASES=(
     "1K:16384"
     "4K:16384"
     "64K:16384"
@@ -63,8 +63,31 @@ CASES=(
     "256M:4"
 )
 
-if [[ -n "${CASES_CSV:-}" ]]; then
-    IFS=',' read -r -a CASES <<< "${CASES_CSV}"
+RAND_CASES=(
+    "4K:1024"
+    "64K:512"
+    "1M:64"
+)
+
+SMALLFILE_CASES=(
+    "1K:1024"
+    "4K:512"
+    "16K:256"
+)
+
+if [[ -n "${SEQ_CASES_CSV:-}" ]]; then
+    IFS=',' read -r -a SEQ_CASES <<< "${SEQ_CASES_CSV}"
+elif [[ -n "${CASES_CSV:-}" ]]; then
+    # Backward compatibility with previous CASES_CSV.
+    IFS=',' read -r -a SEQ_CASES <<< "${CASES_CSV}"
+fi
+
+if [[ -n "${RAND_CASES_CSV:-}" ]]; then
+    IFS=',' read -r -a RAND_CASES <<< "${RAND_CASES_CSV}"
+fi
+
+if [[ -n "${SMALLFILE_CASES_CSV:-}" ]]; then
+    IFS=',' read -r -a SMALLFILE_CASES <<< "${SMALLFILE_CASES_CSV}"
 fi
 
 MODES=("sync" "fdatasync")
@@ -78,6 +101,11 @@ if [[ "${INCLUDE_KERNEL_COMPARE}" == "1" ]]; then
 fi
 if [[ -n "${BACKENDS_CSV:-}" ]]; then
     IFS=',' read -r -a BACKENDS <<< "${BACKENDS_CSV}"
+fi
+
+WORKLOADS=("seq_write" "seq_read" "rand_write" "rand_read" "smallfile_create")
+if [[ -n "${WORKLOADS_CSV:-}" ]]; then
+    IFS=',' read -r -a WORKLOADS <<< "${WORKLOADS_CSV}"
 fi
 
 CURRENT_FUSE_PID=""
@@ -206,18 +234,21 @@ mount_backend() {
 
 run_sample() {
     local backend="$1"
-    local mode="$2"
-    local bs="$3"
-    local count="$4"
-    local sample_id="$5"
-    local csv_path="${6:-}"
+    local workload="$2"
+    local mode="$3"
+    local bs="$4"
+    local count="$5"
+    local sample_id="$6"
+    local csv_path="${7:-}"
+    local workload_script_path
 
     cleanup_current_sample
     ensure_device_not_mounted_elsewhere
     format_device
     mount_backend "${backend}" "${sample_id}"
 
-    bash "${ROOT_DIR}/benchmarks/dd.sh" "${MNT_DIR}" "${backend}" "${mode}" "${bs}" "${count}" "${sample_id}" "${csv_path}"
+    workload_script_path="$(workload_script "${workload}")"
+    bash "${workload_script_path}" "${MNT_DIR}" "${backend}" "${mode}" "${bs}" "${count}" "${sample_id}" "${csv_path}"
     cleanup_current_sample
 }
 
@@ -228,11 +259,86 @@ prepare_backend_environment() {
     fi
 }
 
+workload_script() {
+    local workload="$1"
+    case "${workload}" in
+        seq_write)
+            echo "${ROOT_DIR}/benchmarks/dd.sh"
+            ;;
+        seq_read)
+            echo "${ROOT_DIR}/benchmarks/dd_seq_read.sh"
+            ;;
+        rand_write)
+            echo "${ROOT_DIR}/benchmarks/dd_rand_write.sh"
+            ;;
+        rand_read)
+            echo "${ROOT_DIR}/benchmarks/dd_rand_read.sh"
+            ;;
+        smallfile_create)
+            echo "${ROOT_DIR}/benchmarks/smallfile_create.sh"
+            ;;
+        *)
+            echo "Unknown workload: ${workload}" >&2
+            return 1
+            ;;
+    esac
+}
+
+workload_cases() {
+    local workload="$1"
+    case "${workload}" in
+        seq_write | seq_read)
+            printf "%s\n" "${SEQ_CASES[@]}"
+            ;;
+        rand_write | rand_read)
+            printf "%s\n" "${RAND_CASES[@]}"
+            ;;
+        smallfile_create)
+            printf "%s\n" "${SMALLFILE_CASES[@]}"
+            ;;
+        *)
+            echo "Unknown workload for cases: ${workload}" >&2
+            return 1
+            ;;
+    esac
+}
+
+workload_modes() {
+    local workload="$1"
+    case "${workload}" in
+        seq_read | rand_read)
+            # Read workload does not have meaningful sync/fdatasync variants.
+            printf "buffered\n"
+            ;;
+        seq_write | rand_write | smallfile_create)
+            printf "%s\n" "${MODES[@]}"
+            ;;
+        *)
+            echo "Unknown workload for modes: ${workload}" >&2
+            return 1
+            ;;
+    esac
+}
+
+validate_workloads() {
+    local workload
+    local script_path
+    for workload in "${WORKLOADS[@]}"; do
+        script_path="$(workload_script "${workload}")"
+        if [[ ! -f "${script_path}" ]]; then
+            echo "Workload script not found: ${script_path}" >&2
+            exit 1
+        fi
+    done
+}
+
 build_project
 
 mkdir -p "${MNT_DIR}" "${OUT_DIR}"
 cleanup_current_sample
 rm -f "${RESULT_CSV}" "${SUMMARY_CSV}" "${COMPARE_CSV}" "${PLAN_FILE}"
+
+validate_workloads
 
 for backend in "${BACKENDS[@]}"; do
     prepare_backend_environment "${backend}"
@@ -241,7 +347,7 @@ done
 if [[ "${GLOBAL_WARMUP}" == "1" ]]; then
     echo "==> Running warmup sample..."
     for backend in "${BACKENDS[@]}"; do
-        run_sample "${backend}" "fdatasync" "1M" "256" "warmup_${backend}" ""
+        run_sample "${backend}" "seq_write" "fdatasync" "1M" "256" "warmup_${backend}" ""
     done
 fi
 
@@ -249,12 +355,16 @@ echo "==> Creating randomized run plan..."
 tmp_plan="${PLAN_FILE}.tmp"
 : > "${tmp_plan}"
 for backend in "${BACKENDS[@]}"; do
-    for mode in "${MODES[@]}"; do
-        for entry in "${CASES[@]}"; do
-            bs="${entry%%:*}"
-            count="${entry##*:}"
-            for ((rep = 1; rep <= REPEAT; rep++)); do
-                printf "%s,%s,%s,%s,%s\n" "${backend}" "${mode}" "${bs}" "${count}" "${rep}" >> "${tmp_plan}"
+    for workload in "${WORKLOADS[@]}"; do
+        mapfile -t workload_mode_list < <(workload_modes "${workload}")
+        mapfile -t workload_case_list < <(workload_cases "${workload}")
+        for mode in "${workload_mode_list[@]}"; do
+            for entry in "${workload_case_list[@]}"; do
+                bs="${entry%%:*}"
+                count="${entry##*:}"
+                for ((rep = 1; rep <= REPEAT; rep++)); do
+                    printf "%s,%s,%s,%s,%s,%s\n" "${backend}" "${workload}" "${mode}" "${bs}" "${count}" "${rep}" >> "${tmp_plan}"
+                done
             done
         done
     done
@@ -271,18 +381,18 @@ total_runs=$(wc -l < "${PLAN_FILE}")
 current_run=0
 
 echo "==> Running benchmark samples (${total_runs} runs)..."
-while IFS=, read -r backend mode bs count rep; do
+while IFS=, read -r backend workload mode bs count rep; do
     current_run=$((current_run + 1))
-    sample_id=$(printf "%04d_%s_%s_%s_r%s" "${current_run}" "${backend}" "${mode}" "${bs}" "${rep}")
-    echo "[${current_run}/${total_runs}] backend=${backend} mode=${mode} bs=${bs} repeat=${rep}"
-    run_sample "${backend}" "${mode}" "${bs}" "${count}" "${sample_id}" "${RESULT_CSV}"
+    sample_id=$(printf "%04d_%s_%s_%s_%s_r%s" "${current_run}" "${backend}" "${workload}" "${mode}" "${bs}" "${rep}")
+    echo "[${current_run}/${total_runs}] backend=${backend} workload=${workload} mode=${mode} bs=${bs} repeat=${rep}"
+    run_sample "${backend}" "${workload}" "${mode}" "${bs}" "${count}" "${sample_id}" "${RESULT_CSV}"
 done < "${PLAN_FILE}"
 
 echo "==> Aggregating summary..."
 {
-    echo "backend,mode,bs,samples,median_mib_per_s,avg_mib_per_s,min_mib_per_s,max_mib_per_s,p90_mib_per_s"
-    tail -n +2 "${RESULT_CSV}" | sort -t',' -k2,2 -k3,3 -k4,4 -k9,9n | awk -F',' '
-        function flush_group(    median, p90idx, p90, avg) {
+    echo "workload,backend,mode,bs,samples,median_mib_per_s,avg_mib_per_s,min_mib_per_s,max_mib_per_s,p90_mib_per_s,avg_ops_per_s"
+    tail -n +2 "${RESULT_CSV}" | sort -t',' -k2,2 -k3,3 -k4,4 -k5,5 -k11,11n | awk -F',' '
+        function flush_group(    median, p90idx, p90, avg, avgOps) {
             if (count == 0) {
                 return
             }
@@ -294,26 +404,33 @@ echo "==> Aggregating summary..."
             p90idx = int((count - 1) * 0.9) + 1
             p90 = speed[p90idx]
             avg = sum / count
-            printf "%s,%s,%s,%d,%.2f,%.2f,%.2f,%.2f,%.2f\n", curBackend, curMode, curBs, count, median, avg, minv, maxv, p90
+            avgOps = opsSum / count
+            printf "%s,%s,%s,%s,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", curWorkload, curBackend, curMode, curBs, count, median, avg, minv, maxv, p90, avgOps
             delete speed
+            delete ops
             count = 0
             sum = 0
+            opsSum = 0
             minv = 0
             maxv = 0
         }
         {
-            backend = $2
-            mode = $3
-            bs = $4
-            s = $9 + 0
+            workload = $2
+            backend = $3
+            mode = $4
+            bs = $5
+            s = $11 + 0
+            o = $12 + 0
             if (count == 0) {
+                curWorkload = workload
                 curBackend = backend
                 curMode = mode
                 curBs = bs
                 minv = s
                 maxv = s
-            } else if (backend != curBackend || mode != curMode || bs != curBs) {
+            } else if (workload != curWorkload || backend != curBackend || mode != curMode || bs != curBs) {
                 flush_group()
+                curWorkload = workload
                 curBackend = backend
                 curMode = mode
                 curBs = bs
@@ -322,7 +439,9 @@ echo "==> Aggregating summary..."
             }
             count += 1
             speed[count] = s
+            ops[count] = o
             sum += s
+            opsSum += o
             if (s < minv) {
                 minv = s
             }
@@ -337,38 +456,56 @@ echo "==> Aggregating summary..."
 } > "${SUMMARY_CSV}"
 
 {
-    echo "mode,bs,fuse_median_mib_per_s,kernel_median_mib_per_s,fuse_to_kernel_ratio"
+    echo "workload,mode,bs,fuse_median_mib_per_s,kernel_median_mib_per_s,fuse_to_kernel_ratio,fuse_avg_ops_per_s,kernel_avg_ops_per_s,fuse_to_kernel_ops_ratio"
     awk -F',' '
         NR == 1 {
             next
         }
         {
-            key = $2 "," $3
-            if ($1 == "fuse") {
-                fuse[key] = $5 + 0
-            } else if ($1 == "kernel") {
-                kernel[key] = $5 + 0
+            key = $1 "," $3 "," $4
+            if ($2 == "fuse") {
+                fuseSpeed[key] = $6 + 0
+                fuseOps[key] = $11 + 0
+            } else if ($2 == "kernel") {
+                kernelSpeed[key] = $6 + 0
+                kernelOps[key] = $11 + 0
             }
             keys[key] = 1
         }
         END {
             for (k in keys) {
                 split(k, p, ",")
-                fm = (k in fuse) ? fuse[k] : 0
-                km = (k in kernel) ? kernel[k] : 0
+                fm = (k in fuseSpeed) ? fuseSpeed[k] : 0
+                km = (k in kernelSpeed) ? kernelSpeed[k] : 0
+                fo = (k in fuseOps) ? fuseOps[k] : 0
+                ko = (k in kernelOps) ? kernelOps[k] : 0
+                ratio = ""
+                opsRatio = ""
                 if (fm > 0 && km > 0) {
-                    ratio = fm / km
-                    printf "%s,%s,%.2f,%.2f,%.4f\n", p[1], p[2], fm, km, ratio
-                } else {
-                    printf "%s,%s,%.2f,%.2f,\n", p[1], p[2], fm, km
+                    ratio = sprintf("%.4f", fm / km)
                 }
+                if (fo > 0 && ko > 0) {
+                    opsRatio = sprintf("%.4f", fo / ko)
+                }
+                if (ratio == "") {
+                    ratioOut = ""
+                } else {
+                    ratioOut = ratio
+                }
+                if (opsRatio == "") {
+                    opsRatioOut = ""
+                } else {
+                    opsRatioOut = opsRatio
+                }
+                printf "%s,%s,%s,%.2f,%.2f,%s,%.2f,%.2f,%s\n", p[1], p[2], p[3], fm, km, ratioOut, fo, ko, opsRatioOut
             }
         }
-    ' "${SUMMARY_CSV}" | sort -t',' -k1,1 -k2,2
+    ' "${SUMMARY_CSV}" | sort -t',' -k1,1 -k2,2 -k3,3
 } > "${COMPARE_CSV}"
 
 echo "==> Benchmark finished."
 echo "    Target: ${TARGET_PATH} (${TARGET_KIND})"
+echo "    Workloads: ${WORKLOADS[*]}"
 echo "    Results: ${RESULT_CSV}"
 echo "    Summary: ${SUMMARY_CSV}"
 echo "    Compare: ${COMPARE_CSV}"

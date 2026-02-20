@@ -5,7 +5,7 @@ set -euo pipefail
 if [[ $# -lt 6 ]]; then
     echo "Usage: $0 <mount_dir> <backend> <mode> <bs> <count> <sample_id> [csv_path]" >&2
     echo "backend: fuse | kernel" >&2
-    echo "mode: sync | fdatasync | buffered" >&2
+    echo "mode: buffered (sync/fdatasync accepted and treated as buffered)" >&2
     exit 1
 fi
 
@@ -16,31 +16,15 @@ BS="$4"
 COUNT="$5"
 SAMPLE_ID="$6"
 CSV_PATH="${7:-}"
-WORKLOAD="seq_write"
+WORKLOAD="seq_read"
 
 if ! mountpoint -q "${MNT_DIR}"; then
     echo "Mountpoint is not active: ${MNT_DIR}" >&2
     exit 1
 fi
 
-OUTPUT_FILE="${MNT_DIR}/dd_${MODE}_${BS}_${SAMPLE_ID}.bin"
-
-cleanup() {
-    rm -f "${OUTPUT_FILE}"
-}
-trap cleanup EXIT INT TERM
-
-declare -a DD_ARGS
-DD_ARGS=("if=/dev/zero" "of=${OUTPUT_FILE}" "bs=${BS}" "count=${COUNT}" "status=none")
-
 case "${MODE}" in
-    sync)
-        DD_ARGS+=("oflag=sync")
-        ;;
-    fdatasync)
-        DD_ARGS+=("conv=fdatasync")
-        ;;
-    buffered)
+    sync | fdatasync | buffered)
         ;;
     *)
         echo "Unknown mode: ${MODE}" >&2
@@ -48,11 +32,21 @@ case "${MODE}" in
         ;;
 esac
 
+INPUT_FILE="${MNT_DIR}/dd_${WORKLOAD}_${BS}_${SAMPLE_ID}.bin"
+
+cleanup() {
+    rm -f "${INPUT_FILE}"
+}
+trap cleanup EXIT INT TERM
+
+# Prepare source file outside timed section.
+dd if=/dev/zero of="${INPUT_FILE}" bs="${BS}" count="${COUNT}" conv=fdatasync status=none
+
 start_ns=$(date +%s%N)
-dd "${DD_ARGS[@]}"
+dd if="${INPUT_FILE}" of=/dev/null bs="${BS}" count="${COUNT}" status=none
 end_ns=$(date +%s%N)
 
-bytes=$(stat -c '%s' "${OUTPUT_FILE}")
+bytes=$(stat -c '%s' "${INPUT_FILE}")
 seconds=$(awk -v start="${start_ns}" -v end="${end_ns}" 'BEGIN { printf "%.6f", (end - start) / 1000000000 }')
 mib_per_s=$(awk -v b="${bytes}" -v s="${seconds}" 'BEGIN { if (s <= 0) { printf "0.00" } else { printf "%.2f", b / 1024 / 1024 / s } }')
 ops_per_s=$(awk -v o="${COUNT}" -v s="${seconds}" 'BEGIN { if (s <= 0) { printf "0.00" } else { printf "%.2f", o / s } }')
