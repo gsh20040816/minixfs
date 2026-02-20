@@ -52,6 +52,11 @@ COUNT="$5"
 SAMPLE_ID="$6"
 CSV_PATH="${7:-}"
 WORKLOAD="rand_read"
+SAFE_SAMPLE_ID="${SAMPLE_ID//[^a-zA-Z0-9]/_}"
+SAFE_SAMPLE_ID="${SAFE_SAMPLE_ID:0:16}"
+if [[ -z "${SAFE_SAMPLE_ID}" ]]; then
+    SAFE_SAMPLE_ID="sample"
+fi
 
 if ! mountpoint -q "${MNT_DIR}"; then
     echo "Mountpoint is not active: ${MNT_DIR}" >&2
@@ -72,7 +77,7 @@ if [[ "${COUNT}" -le 0 ]]; then
     exit 1
 fi
 
-INPUT_FILE="${MNT_DIR}/dd_${WORKLOAD}_${BS}_${SAMPLE_ID}.bin"
+INPUT_FILE="${MNT_DIR}/dd_${WORKLOAD}_${BS}_${SAFE_SAMPLE_ID}.bin"
 
 cleanup() {
     rm -f "${INPUT_FILE}"

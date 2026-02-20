@@ -383,7 +383,7 @@ current_run=0
 echo "==> Running benchmark samples (${total_runs} runs)..."
 while IFS=, read -r backend workload mode bs count rep; do
     current_run=$((current_run + 1))
-    sample_id=$(printf "%04d_%s_%s_%s_%s_r%s" "${current_run}" "${backend}" "${workload}" "${mode}" "${bs}" "${rep}")
+    sample_id=$(printf "s%04d_r%s" "${current_run}" "${rep}")
     echo "[${current_run}/${total_runs}] backend=${backend} workload=${workload} mode=${mode} bs=${bs} repeat=${rep}"
     run_sample "${backend}" "${workload}" "${mode}" "${bs}" "${count}" "${sample_id}" "${RESULT_CSV}"
 done < "${PLAN_FILE}"

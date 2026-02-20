@@ -17,13 +17,18 @@ COUNT="$5"
 SAMPLE_ID="$6"
 CSV_PATH="${7:-}"
 WORKLOAD="seq_write"
+SAFE_SAMPLE_ID="${SAMPLE_ID//[^a-zA-Z0-9]/_}"
+SAFE_SAMPLE_ID="${SAFE_SAMPLE_ID:0:16}"
+if [[ -z "${SAFE_SAMPLE_ID}" ]]; then
+    SAFE_SAMPLE_ID="sample"
+fi
 
 if ! mountpoint -q "${MNT_DIR}"; then
     echo "Mountpoint is not active: ${MNT_DIR}" >&2
     exit 1
 fi
 
-OUTPUT_FILE="${MNT_DIR}/dd_${MODE}_${BS}_${SAMPLE_ID}.bin"
+OUTPUT_FILE="${MNT_DIR}/dd_${MODE}_${BS}_${SAFE_SAMPLE_ID}.bin"
 
 cleanup() {
     rm -f "${OUTPUT_FILE}"

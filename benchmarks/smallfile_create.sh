@@ -52,6 +52,11 @@ COUNT="$5"
 SAMPLE_ID="$6"
 CSV_PATH="${7:-}"
 WORKLOAD="smallfile_create"
+SAFE_SAMPLE_ID="${SAMPLE_ID//[^a-zA-Z0-9]/_}"
+SAFE_SAMPLE_ID="${SAFE_SAMPLE_ID:0:16}"
+if [[ -z "${SAFE_SAMPLE_ID}" ]]; then
+    SAFE_SAMPLE_ID="sample"
+fi
 
 if ! mountpoint -q "${MNT_DIR}"; then
     echo "Mountpoint is not active: ${MNT_DIR}" >&2
@@ -72,7 +77,7 @@ if [[ "${COUNT}" -le 0 ]]; then
     exit 1
 fi
 
-BENCH_DIR="${MNT_DIR}/smallfile_${MODE}_${BS}_${SAMPLE_ID}"
+BENCH_DIR="${MNT_DIR}/smallfile_${MODE}_${BS}_${SAFE_SAMPLE_ID}"
 
 cleanup() {
     rm -rf "${BENCH_DIR}"
